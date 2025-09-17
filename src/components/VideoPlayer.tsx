@@ -14,6 +14,8 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
   const [isLoading, setIsLoading] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const loadTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const isGoogleDrive = videoUrl.includes('drive.google.com');
   const processedUrl = isGoogleDrive ? generateGoogleDriveEmbedUrl(videoUrl) : processGoogleDriveUrl(videoUrl);
@@ -22,9 +24,9 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
     setIsLoading(true);
   }, [videoUrl]);
 
-  // Simplified iframe loading handling
+  // Simplified iframe loading handling with video end detection
   useEffect(() => {
-    if (!isGoogleDrive) return;
+    if (!isGoogleDrive || !onVideoEnd) return;
 
     const handleIframeLoad = () => {
       setIsLoading(false);
@@ -35,8 +37,23 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
       iframe.addEventListener('load', handleIframeLoad);
     }
 
+    // Clear any existing timeouts
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    if (loadTimerRef.current) {
+      clearTimeout(loadTimerRef.current);
+    }
+
+    // Set a timeout to simulate video end (since we can't detect iframe video end directly)
+    // Using a more reasonable default of 30 seconds for video duration
+    timeoutRef.current = setTimeout(() => {
+      console.log("Iframe video timeout reached, triggering next video");
+      onVideoEnd();
+    }, 30000); // 30 seconds default
+
     // Set a timeout to mark as loaded even if the load event doesn't fire
-    const loadTimer = setTimeout(() => {
+    loadTimerRef.current = setTimeout(() => {
       setIsLoading(false);
     }, 3000);
 
@@ -45,9 +62,14 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
       if (iframe) {
         iframe.removeEventListener('load', handleIframeLoad);
       }
-      clearTimeout(loadTimer);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      if (loadTimerRef.current) {
+        clearTimeout(loadTimerRef.current);
+      }
     };
-  }, [isGoogleDrive, videoUrl]);
+  }, [isGoogleDrive, onVideoEnd, videoUrl]);
 
   return (
     <Card className={`glass-morphism shadow-card overflow-hidden ${isReelStyle ? 'border-0' : ''}`}>
@@ -82,6 +104,7 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
               className="w-full h-full object-cover"
               onLoadedData={() => setIsLoading(false)}
               onEnded={() => {
+                console.log("Direct video ended, triggering next video");
                 onVideoEnd?.();
               }}
               onError={() => setIsLoading(false)}
