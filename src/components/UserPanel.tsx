@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { VideoPlayer } from './VideoPlayer';
 import { ThemeToggle } from './ThemeToggle';
-import { getStoredQRCodes, downloadQRCode, QRCodeData } from '@/lib/qrGenerator';
-import { QrCode, Download, Play, Settings, ArrowLeft, Zap, Users, TrendingUp, Video, Music, Heart, Share, MessageCircle, Bookmark } from 'lucide-react';
+import { getStoredQRCodes, downloadQRCode, QRCodeData, generateQRCode } from '@/lib/qrGenerator';
+import { QrCode, Download, Play, Settings, ArrowLeft, Zap, Users, TrendingUp, Video, Music } from 'lucide-react';
 
 interface UserPanelProps {
   onBackToLogin: () => void;
@@ -14,18 +14,30 @@ interface UserPanelProps {
 export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
   const [qrCodes, setQrCodes] = useState<QRCodeData[]>([]);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
-  const [allFilesQRData, setAllFilesQRData] = useState<string>('');
+  const [allReelsQR, setAllReelsQR] = useState<string>('');
+  const [isGeneratingQR, setIsGeneratingQR] = useState<boolean>(false);
 
   useEffect(() => {
     const codes = getStoredQRCodes();
     setQrCodes(codes);
     
-    // Generate QR code for all files download
-    if (codes.length > 0) {
-      const allUrls = codes.map(code => `${code.title}: ${code.url}`).join('\n');
-      setAllFilesQRData(allUrls);
-    }
+    // Generate QR code for all reels folder
+    generateAllReelsQR();
   }, []);
+
+  const generateAllReelsQR = async () => {
+    setIsGeneratingQR(true);
+    try {
+      // Using the provided Google Drive folder link
+      const folderUrl = "https://drive.google.com/drive/folders/1GQI87bJ5YqKH8cZMZPTtvbD4uuZfw2pD?usp=drive_link";
+      const qrData = await generateQRCode(folderUrl, "All Reels Folder");
+      setAllReelsQR(qrData.qrCodeDataUrl);
+    } catch (error) {
+      console.error("Failed to generate QR code for all reels:", error);
+    } finally {
+      setIsGeneratingQR(false);
+    }
+  };
 
   const handleVideoEnd = () => {
     if (qrCodes.length > 1) {
@@ -33,11 +45,14 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
     }
   };
 
-  const downloadAllFilesQR = async () => {
-    if (allFilesQRData) {
-      // Here you would generate and download a QR code containing all file information
-      // For now, we'll download all individual QR codes
-      qrCodes.forEach(qr => downloadQRCode(qr));
+  const downloadAllReelsQR = () => {
+    if (allReelsQR) {
+      const link = document.createElement('a');
+      link.download = 'all_reels_qr.png';
+      link.href = allReelsQR;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   };
 
@@ -93,7 +108,19 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
               </CardHeader>
               <CardContent className="text-center space-y-4">
                 <div className="p-6 bg-gradient-to-br from-muted/30 to-accent/20 rounded-2xl border border-border/30 animate-shimmer">
-                  <QrCode className="h-20 w-20 mx-auto mb-4 text-primary animate-float" />
+                  {isGeneratingQR ? (
+                    <div className="flex justify-center items-center h-20">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  ) : allReelsQR ? (
+                    <img 
+                      src={allReelsQR} 
+                      alt="All Reels QR Code"
+                      className="h-20 w-20 mx-auto mb-4 rounded-lg"
+                    />
+                  ) : (
+                    <QrCode className="h-20 w-20 mx-auto mb-4 text-primary animate-float" />
+                  )}
                   <p className="text-sm text-muted-foreground">
                     Scan to access all video content
                   </p>
@@ -101,11 +128,11 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
                 <Button 
                   variant="premium" 
                   className="w-full group"
-                  onClick={downloadAllFilesQR}
-                  disabled={qrCodes.length === 0}
+                  onClick={downloadAllReelsQR}
+                  disabled={!allReelsQR}
                 >
                   <Download className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                  Download All QRs
+                  Download All Reels QR
                   <Zap className="h-4 w-4 ml-1" />
                 </Button>
                 <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
@@ -115,27 +142,6 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
               </CardContent>
             </Card>
 
-            {/* Additional Stats Card */}
-            <Card className="glass-morphism shadow-card modern-hover">
-              <CardContent className="p-4">
-                <div className="grid grid-cols-2 gap-4 text-center">
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-center">
-                      <Heart className="h-4 w-4 text-red-500" />
-                    </div>
-                    <div className="text-sm font-semibold">1.2K</div>
-                    <div className="text-xs text-muted-foreground">Likes</div>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-center">
-                      <Share className="h-4 w-4 text-blue-500" />
-                    </div>
-                    <div className="text-sm font-semibold">89</div>
-                    <div className="text-xs text-muted-foreground">Shares</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
           {/* Middle Section - Reel-style Video Player */}
@@ -197,27 +203,6 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
                   </div>
                 </div>
 
-                {/* Reel-style Action Buttons */}
-                <div className="flex justify-center">
-                  <div className="flex items-center gap-6 p-4 glass-morphism rounded-2xl">
-                    <Button variant="ghost" size="sm" className="flex-col gap-1 h-auto p-3 modern-hover">
-                      <Heart className="h-5 w-5" />
-                      <span className="text-xs">Like</span>
-                    </Button>
-                    <Button variant="ghost" size="sm" className="flex-col gap-1 h-auto p-3 modern-hover">
-                      <MessageCircle className="h-5 w-5" />
-                      <span className="text-xs">Comment</span>
-                    </Button>
-                    <Button variant="ghost" size="sm" className="flex-col gap-1 h-auto p-3 modern-hover">
-                      <Share className="h-5 w-5" />
-                      <span className="text-xs">Share</span>
-                    </Button>
-                    <Button variant="ghost" size="sm" className="flex-col gap-1 h-auto p-3 modern-hover">
-                      <Bookmark className="h-5 w-5" />
-                      <span className="text-xs">Save</span>
-                    </Button>
-                  </div>
-                </div>
               </div>
             ) : (
               <Card className="glass-morphism shadow-card">
