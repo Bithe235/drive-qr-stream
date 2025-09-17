@@ -79,13 +79,13 @@ export const processGoogleDriveUrl = (url: string): string => {
   return url;
 };
 
-// New function to generate embed URL with better scaling options
+// New function to generate embed URL with autoplay support
 export const generateGoogleDriveEmbedUrl = (url: string): string => {
   const fileIdMatch = url.match(/[-\w]{25,}/);
   if (fileIdMatch) {
     const fileId = fileIdMatch[0];
-    // Use the Google Drive embed URL with parameters optimized for video scaling
-    return `https://drive.google.com/file/d/${fileId}/preview?usp=drivesdk&embed=true`;
+    // Use the Google Drive embed URL with autoplay parameters
+    return `https://drive.google.com/file/d/${fileId}/preview?usp=drivesdk&embed=true&autoplay=1&mute=1`;
   }
   return url;
 };

@@ -7,7 +7,7 @@ interface VideoPlayerProps {
   title: string;
   onVideoEnd?: () => void;
   isReelStyle?: boolean;
-  autoPlay?: boolean; // Add autoPlay prop
+  autoPlay?: boolean;
 }
 
 export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, autoPlay = true }: VideoPlayerProps) => {
@@ -24,20 +24,76 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
 
   // Add effect to auto-play when video is loaded
   useEffect(() => {
-    if (autoPlay && videoRef.current && !isLoading) {
-      const playVideo = async () => {
-        try {
-          await videoRef.current?.play();
-        } catch (error) {
-          console.log("Autoplay failed:", error);
+    if (!autoPlay || isLoading) return;
+
+    const playVideo = async () => {
+      try {
+        // For direct video files
+        if (!isGoogleDrive && videoRef.current) {
+          await videoRef.current.play();
         }
-      };
+        // For Google Drive iframe videos, autoplay is handled by the iframe parameters
+      } catch (error) {
+        console.log("Autoplay failed:", error);
+      }
+    };
+    
+    // Small delay to ensure video is ready
+    const timer = setTimeout(playVideo, 300);
+    return () => clearTimeout(timer);
+  }, [videoUrl, isLoading, autoPlay, isGoogleDrive]);
+
+  // Handle iframe video end detection with improved timing
+  useEffect(() => {
+    if (!isGoogleDrive || !onVideoEnd) return;
+
+    let timeoutId: NodeJS.Timeout;
+    let loadTimer: NodeJS.Timeout;
+
+    const handleIframeLoad = () => {
+      // Remove any existing timeout
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
       
-      // Small delay to ensure video is ready
-      const timer = setTimeout(playVideo, 100);
-      return () => clearTimeout(timer);
+      // Also clear the load timer
+      if (loadTimer) {
+        clearTimeout(loadTimer);
+      }
+      
+      // Set loading to false immediately when iframe loads
+      setIsLoading(false);
+      
+      // Set a timeout to simulate video end (since we can't detect iframe video end directly)
+      // We'll use a more reasonable default of 30 seconds for video duration
+      timeoutId = setTimeout(() => {
+        onVideoEnd();
+      }, 30000); // 30 seconds default
+    };
+
+    const iframe = iframeRef.current;
+    if (iframe) {
+      iframe.addEventListener('load', handleIframeLoad);
+      
+      // Set a timeout to mark as loaded even if the load event doesn't fire
+      loadTimer = setTimeout(() => {
+        setIsLoading(false);
+      }, 2000);
     }
-  }, [videoUrl, isLoading, autoPlay]);
+
+    // Cleanup function
+    return () => {
+      if (iframe) {
+        iframe.removeEventListener('load', handleIframeLoad);
+      }
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      if (loadTimer) {
+        clearTimeout(loadTimer);
+      }
+    };
+  }, [isGoogleDrive, onVideoEnd, videoUrl]);
 
   return (
     <Card className={`glass-morphism shadow-card overflow-hidden ${isReelStyle ? 'border-0' : ''}`}>
@@ -56,7 +112,10 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
               className="video-iframe"
               allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
               allowFullScreen
-              onLoad={() => setIsLoading(false)}
+              onLoad={() => {
+                // Set loading to false when iframe loads
+                setIsLoading(false);
+              }}
               title={title}
               sandbox="allow-scripts allow-same-origin allow-presentation allow-popups-to-escape-sandbox"
             />

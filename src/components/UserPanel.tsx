@@ -45,17 +45,6 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
     }
   };
 
-  const downloadAllReelsQR = () => {
-    if (allReelsQR) {
-      const link = document.createElement('a');
-      link.download = 'all_reels_qr.png';
-      link.href = allReelsQR;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  };
-
   const currentVideo = qrCodes[currentVideoIndex];
 
   return (
@@ -125,16 +114,6 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
                     Scan to access all video content
                   </p>
                 </div>
-                <Button 
-                  variant="premium" 
-                  className="w-full group"
-                  onClick={downloadAllReelsQR}
-                  disabled={!allReelsQR}
-                >
-                  <Download className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                  Download All Reels QR
-                  <Zap className="h-4 w-4 ml-1" />
-                </Button>
                 <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
                   <Video className="h-3 w-3" />
                   <span>{qrCodes.length} reels available</span>
