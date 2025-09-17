@@ -24,13 +24,20 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
 
   // Add effect to auto-play when video is loaded
   useEffect(() => {
-    if (!autoPlay || isLoading) return;
+    if (!autoPlay) return;
 
     const playVideo = async () => {
       try {
         // For direct video files
         if (!isGoogleDrive && videoRef.current) {
-          await videoRef.current.play();
+          // Wait for video to be ready
+          if (videoRef.current.readyState >= 2) {
+            await videoRef.current.play();
+          } else {
+            videoRef.current.addEventListener('canplay', async () => {
+              await videoRef.current?.play();
+            }, { once: true });
+          }
         }
         // For Google Drive iframe videos, autoplay is handled by the iframe parameters
       } catch (error) {
@@ -39,9 +46,9 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
     };
     
     // Small delay to ensure video is ready
-    const timer = setTimeout(playVideo, 300);
+    const timer = setTimeout(playVideo, 500);
     return () => clearTimeout(timer);
-  }, [videoUrl, isLoading, autoPlay, isGoogleDrive]);
+  }, [videoUrl, autoPlay, isGoogleDrive]);
 
   // Handle iframe video end detection with improved timing
   useEffect(() => {

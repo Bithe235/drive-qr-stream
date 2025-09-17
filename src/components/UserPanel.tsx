@@ -126,49 +126,6 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
           <div className="lg:col-span-5 space-y-4">
             {currentVideo ? (
               <div className="space-y-4 animate-slide-in-up">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-full bg-gradient-primary animate-glow-pulse">
-                      <Play className="h-5 w-5 text-primary-foreground" />
-                    </div>
-                    <div>
-                      <h2 className="text-2xl font-bold text-foreground">Now Playing</h2>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Music className="h-4 w-4" />
-                        <span>Reel {currentVideoIndex + 1} of {qrCodes.length}</span>
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        <span className="text-xs">LIVE</span>
-                      </div>
-                    </div>
-                  </div>
-                  {qrCodes.length > 1 && (
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setCurrentVideoIndex((prev) => 
-                          prev === 0 ? qrCodes.length - 1 : prev - 1
-                        )}
-                        className="modern-hover"
-                      >
-                        <ArrowLeft className="h-4 w-4" />
-                        Previous
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setCurrentVideoIndex((prev) => 
-                          (prev + 1) % qrCodes.length
-                        )}
-                        className="modern-hover"
-                      >
-                        Next
-                        <ArrowLeft className="h-4 w-4 rotate-180" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-                
                 {/* Reel-style container with increased size */ }
                 <div className="flex justify-center">
                   <div className="reel-container w-full max-w-md animate-glow-pulse">
