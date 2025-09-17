@@ -55,9 +55,9 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
   const currentVideo = qrCodes[currentVideoIndex];
 
   return (
-    <div className="min-h-screen bg-gradient-dark dark:bg-gradient-dark bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      {/* Modern Header with Glassmorphism */ }
-      <div className="glass-morphism sticky top-0 z-50 border-b border-border/50 px-4 py-4">
+    <div className="min-h-screen bg-background">
+      {/* Modern Header with Glassmorphism */}
+      <div className="glass-morphism sticky top-0 z-50 border-b border-border/50 px-4 py-4 bg-card">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-gradient-primary animate-glow-pulse">
@@ -91,10 +91,10 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
 
       <div className="max-w-7xl mx-auto p-4 pb-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left-Middle Section - All Reels Section (spanning more columns) */ }
+          {/* Left-Middle Section - All Reels Section (spanning more columns) */}
           <div className="lg:col-span-4 space-y-4">
-            <Card className="glass-morphism shadow-card modern-hover animate-slide-in-up">
-              <CardHeader className="text-center pb-3">
+            <Card className="glass-morphism shadow-card modern-hover animate-slide-in-up bg-card">
+              <CardHeader className="text-center pb-3 bg-card">
                 <CardTitle className="flex items-center justify-center gap-2 text-lg">
                   <div className="p-2 rounded-full bg-gradient-primary">
                     <QrCode className="h-5 w-5 text-primary-foreground" />
@@ -102,8 +102,8 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
                   All Reels
                 </CardTitle>
               </CardHeader>
-              <CardContent className="text-center space-y-4">
-                <div className="p-6 bg-gradient-to-br from-muted/30 to-accent/20 rounded-2xl border border-border/30 animate-shimmer">
+              <CardContent className="text-center space-y-4 bg-card">
+                <div className="p-6 bg-card rounded-2xl border border-border/30 animate-shimmer">
                   {isGeneratingQR ? (
                     <div className="flex justify-center items-center h-20">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -129,11 +129,11 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
             </Card>
           </div>
 
-          {/* Middle Section - Video Player (Now Playing) */ }
+          {/* Middle Section - Video Player (Now Playing) */}
           <div className="lg:col-span-5 space-y-4">
             {currentVideo ? (
               <div className="space-y-4 animate-slide-in-up">
-                {/* Reel-style container with increased size */ }
+                {/* Reel-style container with increased size */}
                 <div className="flex justify-center">
                   <div className="reel-container w-full max-w-md animate-glow-pulse">
                     <VideoPlayer
@@ -147,8 +147,8 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
 
               </div>
             ) : (
-              <Card className="glass-morphism shadow-card">
-                <CardContent className="flex items-center justify-center h-96">
+              <Card className="glass-morphism shadow-card bg-card">
+                <CardContent className="flex items-center justify-center h-96 bg-card">
                   <div className="text-center animate-slide-in-up">
                     <div className="p-6 rounded-full bg-gradient-primary/10 mx-auto w-fit mb-6">
                       <Video className="h-16 w-16 text-primary animate-float" />
@@ -163,10 +163,10 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
             )}
           </div>
 
-          {/* Right Section - Current Reel and Queue */ }
+          {/* Right Section - Current Reel and Queue */}
           <div className="lg:col-span-3 space-y-4">
-            <Card className="glass-morphism shadow-card modern-hover animate-slide-in-up">
-              <CardHeader className="text-center pb-3">
+            <Card className="glass-morphism shadow-card modern-hover animate-slide-in-up bg-card">
+              <CardHeader className="text-center pb-3 bg-card">
                 <CardTitle className="flex items-center justify-center gap-2 text-lg">
                   <div className="p-2 rounded-full bg-gradient-primary">
                     <QrCode className="h-5 w-5 text-primary-foreground" />
@@ -174,7 +174,7 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
                   Current Reel
                 </CardTitle>
               </CardHeader>
-              <CardContent className="text-center space-y-4">
+              <CardContent className="text-center space-y-4 bg-card">
                 {currentVideo ? (
                   <>
                     <div className="p-4 bg-gradient-to-br from-muted/30 to-accent/20 rounded-2xl border border-border/30 animate-shimmer">
@@ -215,16 +215,16 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
               </CardContent>
             </Card>
 
-            {/* Enhanced Video Queue */ }
+            {/* Enhanced Video Queue */}
             {qrCodes.length > 1 && (
-              <Card className="glass-morphism shadow-card modern-hover">
-                <CardHeader className="pb-3">
+              <Card className="glass-morphism shadow-card modern-hover bg-card">
+                <CardHeader className="pb-3 bg-card">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <TrendingUp className="h-5 w-5" />
                     Queue ({qrCodes.length})
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="bg-card">
                   <div className="space-y-2 max-h-64 overflow-y-auto">
                     {qrCodes.map((qr, index) => (
                       <div 
