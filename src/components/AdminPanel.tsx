@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { generateQRCode, saveQRCode, getStoredQRCodes, deleteQRCode, downloadQRCode, QRCodeData } from '@/lib/qrGenerator';
-import { QrCode, Plus, Download, Trash2, LogOut, Eye, Video } from 'lucide-react';
+import { uploadVideo } from '@/lib/appwrite';
+import { QrCode, Upload, FileVideo, Download, Trash2 } from 'lucide-react';
 
 interface AdminPanelProps {
   onLogout: () => void;
@@ -14,9 +15,10 @@ interface AdminPanelProps {
 
 export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
   const [title, setTitle] = useState('');
-  const [url, setUrl] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [qrCodes, setQrCodes] = useState<QRCodeData[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -37,42 +39,85 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
     }
   };
 
-  const handleGenerateQR = async (e: React.FormEvent) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (file.type.startsWith('video/')) {
+        setVideoFile(file);
+      } else {
+        toast({
+          title: "Invalid File Type",
+          description: "Please select a valid video file",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    if (!title.trim() || !url.trim()) {
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      if (file.type.startsWith('video/')) {
+        setVideoFile(file);
+      } else {
+        toast({
+          title: "Invalid File Type",
+          description: "Please select a valid video file",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const handleUploadVideo = async () => {
+    if (!videoFile || !title.trim()) {
       toast({
         title: "Validation Error",
-        description: "Please fill in both title and URL fields",
+        description: "Please provide a title and select a video file",
         variant: "destructive",
       });
       return;
     }
 
-    setIsGenerating(true);
+    setIsUploading(true);
     try {
-      const qrData = await generateQRCode(url, title);
+      // Upload video
+      const videoUrl = await uploadVideo(videoFile);
+      
+      // Generate QR code for the uploaded video
+      const qrData = await generateQRCode(videoUrl, title);
       await saveQRCode(qrData);
       await loadQRCodes();
+      
+      // Reset form
       setTitle('');
-      setUrl('');
+      setVideoFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       
       toast({
-        title: "QR Code Generated",
-        description: "QR code has been successfully created and saved",
+        title: "Video Uploaded & QR Generated",
+        description: "Video has been uploaded and QR code generated successfully",
       });
     } catch (error) {
       toast({
-        title: "Generation Failed",
-        description: "Failed to generate QR code. Please try again.",
+        title: "Upload Failed",
+        description: "Failed to upload video or generate QR code. Please try again.",
         variant: "destructive",
       });
     }
-    setIsGenerating(false);
+    setIsUploading(false);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, fileUrl?: string) => {
     try {
-      await deleteQRCode(id);
+      await deleteQRCode(id, fileUrl);
       await loadQRCodes();
       toast({
         title: "QR Code Deleted",
@@ -95,11 +140,6 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
     });
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('isAdminLoggedIn');
-    onLogout();
-  };
-
   return (
     <div className="min-h-screen bg-gradient-dark p-4">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -111,71 +151,99 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-foreground">QR Drive Admin Panel</h1>
-              <p className="text-muted-foreground">Manage your QR codes and video content</p>
+              <p className="text-muted-foreground">Upload videos and generate QR codes</p>
             </div>
           </div>
-          <Button variant="outline" onClick={handleLogout}>
-            <LogOut className="h-4 w-4" />
+          <Button variant="outline" onClick={onLogout}>
             Logout
           </Button>
         </div>
 
-        {/* QR Generator Card */}
+        {/* Upload Video Card */}
         <Card className="bg-card/80 backdrop-blur-lg border-border/50 shadow-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Plus className="h-5 w-5" />
-              Generate New QR Code
+              <Upload className="h-5 w-5" />
+              Upload Video & Generate QR Code
             </CardTitle>
             <CardDescription>
-              Create QR codes for your video content. Supports Google Drive and direct video URLs.
+              Upload a video file and automatically generate a QR code for it.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleGenerateQR} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Title</Label>
-                  <Input
-                    id="title"
-                    type="text"
-                    placeholder="Enter video title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="bg-input/50 border-border/50 focus:border-primary"
-                    required
-                  />
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="videoTitle">Video Title</Label>
+              <Input
+                id="videoTitle"
+                type="text"
+                placeholder="Enter video title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="bg-input/50 border-border/50 focus:border-primary"
+                required
+              />
+            </div>
+            
+            <div 
+              className="border-2 border-dashed border-border/50 rounded-lg p-8 text-center cursor-pointer hover:border-primary transition-colors"
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Input
+                ref={fileInputRef}
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+              <div className="flex flex-col items-center gap-3">
+                <Upload className="h-10 w-10 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">
+                    {videoFile ? videoFile.name : "Drag & drop a video file here"}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {videoFile ? `${(videoFile.size / (1024 * 1024)).toFixed(2)} MB` : "or click to browse files"}
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="url">Video URL</Label>
-                  <Input
-                    id="url"
-                    type="url"
-                    placeholder="https://drive.google.com/... or direct video URL"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    className="bg-input/50 border-border/50 focus:border-primary"
-                    required
-                  />
-                </div>
-              </div>
-              <Button 
-                type="submit" 
-                variant="premium" 
-                size="lg" 
-                className="w-full md:w-auto"
-                disabled={isGenerating}
-              >
-                {isGenerating ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-foreground" />
-                ) : (
-                  <>
-                    <QrCode className="h-4 w-4" />
-                    Generate QR Code
-                  </>
+                {videoFile && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setVideoFile(null);
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = '';
+                      }
+                    }}
+                  >
+                    Remove File
+                  </Button>
                 )}
-              </Button>
-            </form>
+              </div>
+            </div>
+            
+            <Button 
+              onClick={handleUploadVideo} 
+              variant="premium" 
+              size="lg" 
+              className="w-full"
+              disabled={isUploading || !videoFile}
+            >
+              {isUploading ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-foreground mr-2" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload Video & Generate QR
+                </>
+              )}
+            </Button>
           </CardContent>
         </Card>
 
@@ -183,7 +251,7 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
         <Card className="bg-card/80 backdrop-blur-lg border-border/50 shadow-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Video className="h-5 w-5" />
+              <FileVideo className="h-5 w-5" />
               Generated QR Codes ({qrCodes.length})
             </CardTitle>
             <CardDescription>
@@ -195,7 +263,7 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
               <div className="text-center py-8 text-muted-foreground">
                 <QrCode className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>No QR codes generated yet</p>
-                <p className="text-sm">Create your first QR code above</p>
+                <p className="text-sm">Upload your first video to generate a QR code</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -234,7 +302,7 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
                               onClick={() => window.open(qr.url, '_blank')}
                               title="View Video"
                             >
-                              <Eye className="h-4 w-4" />
+                              View
                             </Button>
                             <Button
                               variant="ghost"
@@ -247,7 +315,7 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDelete(qr.id)}
+                              onClick={() => handleDelete(qr.id, qr.url)}
                               title="Delete QR Code"
                               className="text-destructive hover:text-destructive"
                             >
