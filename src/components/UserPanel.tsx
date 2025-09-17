@@ -134,7 +134,6 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
                       title={currentVideo.title}
                       onVideoEnd={handleVideoEnd}
                       isReelStyle={true}
-                      autoPlay={true}
                     />
                   </div>
                 </div>

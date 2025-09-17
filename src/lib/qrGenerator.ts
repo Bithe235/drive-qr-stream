@@ -84,9 +84,8 @@ export const generateGoogleDriveEmbedUrl = (url: string): string => {
   const fileIdMatch = url.match(/[-\w]{25,}/);
   if (fileIdMatch) {
     const fileId = fileIdMatch[0];
-    // Use the Google Drive embed URL with autoplay parameters
-    // Added loop=1 to ensure continuous playback and controls=0 to hide controls for better autoplay
-    return `https://drive.google.com/file/d/${fileId}/preview?usp=drivesdk&embed=true&autoplay=1&mute=1&loop=1&controls=0`;
+    // Simplified Google Drive embed URL without autoplay for better reliability
+    return `https://drive.google.com/file/d/${fileId}/preview?usp=drivesdk&embed=true`;
   }
   return url;
 };
