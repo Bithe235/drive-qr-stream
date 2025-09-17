@@ -156,7 +156,7 @@
     border: none;
     object-fit: cover;
     /* Transform to scale video and eliminate black bars */
-    transform: scale(1.05);
+    transform: scale(1.1); /* Increased from 1.05 to 1.1 */
     transform-origin: center;
   }
 
@@ -230,6 +230,9 @@
       0 20px 40px -12px hsl(var(--primary) / 0.25),
       0 0 0 1px hsl(var(--border)),
       inset 0 1px 0 hsl(var(--accent) / 0.5);
+    /* Increased size */
+    max-width: 500px; /* Increased from default */
+    margin: 0 auto;
   }
 
   /* Modern glassmorphism effect */

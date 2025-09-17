@@ -60,7 +60,7 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
 
   return (
     <div className="min-h-screen bg-gradient-dark dark:bg-gradient-dark bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      {/* Modern Header with Glassmorphism */}
+      {/* Modern Header with Glassmorphism */ }
       <div className="glass-morphism sticky top-0 z-50 border-b border-border/50 px-4 py-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-4">
@@ -95,7 +95,7 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
 
       <div className="max-w-7xl mx-auto p-4 pb-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left-Middle Section - All Reels Section (spanning more columns) */}
+          {/* Left-Middle Section - All Reels Section (spanning more columns) */ }
           <div className="lg:col-span-4 space-y-4">
             <Card className="glass-morphism shadow-card modern-hover animate-slide-in-up">
               <CardHeader className="text-center pb-3">
@@ -116,10 +116,10 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
                     <img 
                       src={allReelsQR} 
                       alt="All Reels QR Code"
-                      className="h-20 w-20 mx-auto mb-4 rounded-lg"
+                      className="h-32 w-32 mx-auto mb-4 rounded-lg"
                     />
                   ) : (
-                    <QrCode className="h-20 w-20 mx-auto mb-4 text-primary animate-float" />
+                    <QrCode className="h-32 w-32 mx-auto mb-4 text-primary animate-float" />
                   )}
                   <p className="text-sm text-muted-foreground">
                     Scan to access all video content
@@ -143,7 +143,7 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
             </Card>
           </div>
 
-          {/* Middle Section - Video Player (Now Playing) */}
+          {/* Middle Section - Video Player (Now Playing) */ }
           <div className="lg:col-span-5 space-y-4">
             {currentVideo ? (
               <div className="space-y-4 animate-slide-in-up">
@@ -190,9 +190,9 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
                   )}
                 </div>
                 
-                {/* Reel-style container */}
+                {/* Reel-style container with increased size */ }
                 <div className="flex justify-center">
-                  <div className="reel-container w-full max-w-sm animate-glow-pulse">
+                  <div className="reel-container w-full max-w-md animate-glow-pulse">
                     <VideoPlayer
                       videoUrl={currentVideo.url}
                       title={currentVideo.title}
@@ -221,7 +221,7 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
             )}
           </div>
 
-          {/* Right Section - Current Reel and Queue */}
+          {/* Right Section - Current Reel and Queue */ }
           <div className="lg:col-span-3 space-y-4">
             <Card className="glass-morphism shadow-card modern-hover animate-slide-in-up">
               <CardHeader className="text-center pb-3">
@@ -273,7 +273,7 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
               </CardContent>
             </Card>
 
-            {/* Enhanced Video Queue */}
+            {/* Enhanced Video Queue */ }
             {qrCodes.length > 1 && (
               <Card className="glass-morphism shadow-card modern-hover">
                 <CardHeader className="pb-3">
