@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { VideoPlayer } from './VideoPlayer';
 import { getStoredQRCodes, downloadQRCode, QRCodeData, generateQRCode } from '@/lib/qrGenerator';
 import { QrCode, Download, Play, Video } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface UserPanelProps {
   onBackToLogin: () => void;
@@ -67,12 +68,15 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
               </div>
             </div>
           </div>
-          <Button 
-            variant="ghost" 
-            onClick={onBackToLogin}
-          >
-            Admin
-          </Button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button 
+              variant="ghost" 
+              onClick={onBackToLogin}
+            >
+              Admin
+            </Button>
+          </div>
         </div>
       </div>
 
