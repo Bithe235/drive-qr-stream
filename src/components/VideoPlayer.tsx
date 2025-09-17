@@ -16,7 +16,7 @@ export const transformAppwriteUrlForPlayback = (url: string): string => {
   if (url.includes('/download')) {
     // Replace /download with /view and add project parameter
     const viewUrl = url.replace('/download', '/view');
-    const projectParam = `project=${import.meta.env.VITE_APPWRITE_PROJECT_ID}`;
+    const projectParam = `project=68cb051f0013a0d8aa89`;
     
     // Add project parameter
     if (viewUrl.includes('?')) {
@@ -28,7 +28,7 @@ export const transformAppwriteUrlForPlayback = (url: string): string => {
   
   // If it's a view URL but missing project parameter, add it
   if (url.includes('/view') && !url.includes('project=')) {
-    const projectParam = `project=${import.meta.env.VITE_APPWRITE_PROJECT_ID}`;
+    const projectParam = `project=68cb051f0013a0d8aa89`;
     
     if (url.includes('?')) {
       return `${url}&${projectParam}`;

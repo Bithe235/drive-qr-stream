@@ -5,8 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { generateQRCode, saveQRCode, getStoredQRCodes, deleteQRCode, downloadQRCode, QRCodeData } from '@/lib/qrGenerator';
-import { uploadVideo } from '@/lib/appwrite';
+import { generateQRCode, saveQRCode, getStoredQRCodes, deleteQRCode, downloadQRCode, QRCodeData, uploadVideoAndGenerateQR } from '@/lib/qrGenerator';
 import { QrCode, Upload, FileVideo, Download, Trash2 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -86,12 +85,8 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
 
     setIsUploading(true);
     try {
-      // Upload video
-      const videoUrl = await uploadVideo(videoFile);
-      
-      // Generate QR code for the uploaded video
-      const qrData = await generateQRCode(videoUrl, title);
-      await saveQRCode(qrData);
+      // Upload video and generate QR code
+      const qrData = await uploadVideoAndGenerateQR(videoFile, title);
       await loadQRCodes();
       
       // Reset form
@@ -105,10 +100,10 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
         title: "Video Uploaded & QR Generated",
         description: "Video has been uploaded and QR code generated successfully",
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Upload Failed",
-        description: "Failed to upload video or generate QR code. Please try again.",
+        description: error.message || "Failed to upload video or generate QR code. Please try again.",
         variant: "destructive",
       });
     }

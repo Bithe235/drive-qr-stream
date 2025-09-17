@@ -1,26 +1,20 @@
-import { Client, Databases, Storage, ID, Query, Permission, Role } from 'appwrite';
+import { Client, Storage, Databases, ID, Permission, Role, Query } from 'appwrite';
 import { QRCodeData } from './qrGenerator';
-import { uploadFileToGCS, deleteFileFromGCS } from './gcsService';
 
-// Appwrite configuration from environment variables
+// Appwrite configuration
 const client = new Client();
+
 client
-  .setEndpoint(import.meta.env.VITE_APPWRITE_ENDPOINT)
-  .setProject(import.meta.env.VITE_APPWRITE_PROJECT_ID);
+  .setEndpoint('http://34.23.98.230/v1')
+  .setProject('68cb051f0013a0d8aa89');
 
 const databases = new Databases(client);
 const storage = new Storage(client);
 
 // Database and collection IDs
-const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID || '68ca9f760003f35cf8ca';
-const COLLECTION_ID = 'qrcode'; // Collection name
-const BUCKET_ID = '68caacec001fd1ff6b9d'; // Storage bucket ID for videos
-
-// Flag to determine if we should use Google Cloud Storage
-const USE_GCS = import.meta.env.VITE_USE_GCS === 'true';
-
-console.log('VITE_USE_GCS:', import.meta.env.VITE_USE_GCS);
-console.log('USE_GCS:', USE_GCS);
+const DATABASE_ID = '68cb06140031a586fe2b'; // Updated to your database ID
+const COLLECTION_ID = '68cb061c00209aeffa1d'; // Updated to your collection ID
+const BUCKET_ID = '68cb057c002ca64682a2'; // Your bucket ID
 
 // Function to initialize the database (if needed)
 export const initDatabase = async () => {
@@ -33,28 +27,15 @@ export const initDatabase = async () => {
   }
 };
 
-// Function to upload a video file to storage (GCS if enabled, otherwise Appwrite)
-export const uploadVideo = async (file: File): Promise<string> => {
-  if (USE_GCS) {
-    // Upload to Google Cloud Storage
-    try {
-      const url = await uploadFileToGCS(file);
-      console.log('File uploaded to Google Cloud Storage:', url);
-      return url;
-    } catch (error) {
-      console.error('Error uploading to GCS, falling back to Appwrite:', error);
-      // Fallback to Appwrite storage
-      return await uploadVideoToAppwrite(file);
-    }
-  } else {
-    // Upload to Appwrite storage
-    return await uploadVideoToAppwrite(file);
-  }
-};
-
 // Function to upload a video file to Appwrite storage
-export const uploadVideoToAppwrite = async (file: File): Promise<string> => {
+export const uploadVideo = async (file: File): Promise<string> => {
   try {
+    // Check file size before upload (Appwrite default limit is often 30MB)
+    const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30MB in bytes
+    if (file.size > MAX_FILE_SIZE) {
+      throw new Error(`File size exceeds limit. File is ${(file.size / (1024 * 1024)).toFixed(2)}MB, maximum allowed is 30MB. Please compress the video or contact administrator to increase limit.`);
+    }
+    
     const response = await storage.createFile(
       BUCKET_ID,
       ID.unique(),
@@ -68,45 +49,21 @@ export const uploadVideoToAppwrite = async (file: File): Promise<string> => {
     // Return the file URL - using the view URL for direct playback
     // This is more appropriate for embedding in video elements
     // Also add project parameter for proper authentication
-    return `${import.meta.env.VITE_APPWRITE_ENDPOINT}/storage/buckets/${BUCKET_ID}/files/${response.$id}/view?project=${import.meta.env.VITE_APPWRITE_PROJECT_ID}`;
-  } catch (error) {
+    return `http://34.23.98.230/v1/storage/buckets/${BUCKET_ID}/files/${response.$id}/view?project=68cb051f0013a0d8aa89`;
+  } catch (error: any) {
     console.error('Error uploading video to Appwrite:', error);
+    
+    // Provide more specific error message for file size issues
+    if (error.message && error.message.includes('size')) {
+      throw new Error(`File upload failed: ${error.message}. Please try a smaller file or contact administrator to increase storage limits.`);
+    }
+    
     throw error;
   }
 };
 
-// Function to delete a video file from storage
-export const deleteVideoStorage = async (fileUrl: string): Promise<void> => {
-  if (USE_GCS) {
-    // Delete from Google Cloud Storage
-    if (fileUrl.includes('storage.googleapis.com')) {
-      try {
-        // Extract file name from GCS URL
-        const fileName = fileUrl.split('/').pop() || '';
-        if (fileName) {
-          await deleteFileFromGCS(fileName);
-        }
-      } catch (error) {
-        console.error('Error deleting from GCS:', error);
-        // Try to delete from Appwrite as fallback
-        if (fileUrl.includes('appwrite.io/storage')) {
-          await deleteVideoFromAppwriteStorage(fileUrl);
-        }
-      }
-    } else if (fileUrl.includes('appwrite.io/storage')) {
-      // Fallback to Appwrite storage deletion
-      await deleteVideoFromAppwriteStorage(fileUrl);
-    }
-  } else {
-    // Delete from Appwrite storage
-    if (fileUrl.includes('appwrite.io/storage')) {
-      await deleteVideoFromAppwriteStorage(fileUrl);
-    }
-  }
-};
-
 // Function to delete a video file from Appwrite storage
-export const deleteVideoFromAppwriteStorage = async (fileUrl: string): Promise<void> => {
+export const deleteVideoStorage = async (fileUrl: string): Promise<void> => {
   try {
     // Extract file ID from the URL
     // URL format: https://fra.cloud.appwrite.io/v1/storage/buckets/BUCKET_ID/files/FILE_ID/download

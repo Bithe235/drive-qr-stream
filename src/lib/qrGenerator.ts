@@ -49,9 +49,17 @@ export const uploadVideoAndGenerateQR = async (file: File, title: string): Promi
     const savedQRData = await saveQRCodeToAppwrite(qrData);
     
     return savedQRData;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error uploading video and generating QR code:', error);
-    throw new Error('Failed to upload video and generate QR code');
+    
+    // Provide more user-friendly error messages
+    if (error.message && error.message.includes('size')) {
+      throw new Error(`Video upload failed: ${error.message}`);
+    } else if (error.message) {
+      throw new Error(`Failed to upload video or generate QR code: ${error.message}`);
+    } else {
+      throw new Error('Failed to upload video or generate QR code. Please try again or contact support.');
+    }
   }
 };
 
@@ -60,17 +68,8 @@ export const saveQRCode = async (qrData: QRCodeData): Promise<QRCodeData> => {
     const savedQRData = await saveQRCodeToAppwrite(qrData);
     return savedQRData;
   } catch (error) {
-    console.error('Error saving QR code to Appwrite, falling back to localStorage:', error);
-    // Fallback to localStorage if Appwrite fails
-    try {
-      const existingQRs = getStoredQRCodesFromLocalStorage();
-      const updatedQRs = [...existingQRs, qrData];
-      localStorage.setItem('qrCodes', JSON.stringify(updatedQRs));
-      return qrData;
-    } catch (localStorageError) {
-      console.error('Error saving to localStorage:', localStorageError);
-      throw error; // Throw the original Appwrite error
-    }
+    console.error('Error saving QR code to Appwrite:', error);
+    throw error;
   }
 };
 
@@ -79,23 +78,7 @@ export const getStoredQRCodes = async (): Promise<QRCodeData[]> => {
     const qrCodes = await getQRCodesFromAppwrite();
     return qrCodes;
   } catch (error) {
-    console.error('Error fetching QR codes from Appwrite, falling back to localStorage:', error);
-    // Fallback to localStorage if Appwrite fails
-    try {
-      return getStoredQRCodesFromLocalStorage();
-    } catch (localStorageError) {
-      console.error('Error fetching from localStorage:', localStorageError);
-      return [];
-    }
-  }
-};
-
-export const getStoredQRCodesFromLocalStorage = (): QRCodeData[] => {
-  try {
-    const stored = localStorage.getItem('qrCodes');
-    return stored ? JSON.parse(stored) : [];
-  } catch (error) {
-    console.error('Error parsing stored QR codes from localStorage:', error);
+    console.error('Error fetching QR codes from Appwrite:', error);
     return [];
   }
 };
@@ -104,16 +87,8 @@ export const deleteQRCode = async (id: string, fileUrl?: string): Promise<void> 
   try {
     await deleteQRCodeFromAppwrite(id, fileUrl);
   } catch (error) {
-    console.error('Error deleting QR code from Appwrite, falling back to localStorage:', error);
-    // Fallback to localStorage if Appwrite fails
-    try {
-      const existingQRs = getStoredQRCodesFromLocalStorage();
-      const updatedQRs = existingQRs.filter(qr => qr.id !== id);
-      localStorage.setItem('qrCodes', JSON.stringify(updatedQRs));
-    } catch (localStorageError) {
-      console.error('Error deleting from localStorage:', localStorageError);
-      throw error; // Throw the original Appwrite error
-    }
+    console.error('Error deleting QR code from Appwrite:', error);
+    throw error;
   }
 };
 
