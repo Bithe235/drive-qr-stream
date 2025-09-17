@@ -18,12 +18,19 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
   const [isGeneratingQR, setIsGeneratingQR] = useState<boolean>(false);
 
   useEffect(() => {
-    const codes = getStoredQRCodes();
-    setQrCodes(codes);
-    
+    loadQRCodes();
     // Generate QR code for all reels folder
     generateAllReelsQR();
   }, []);
+
+  const loadQRCodes = async () => {
+    try {
+      const codes = await getStoredQRCodes();
+      setQrCodes(codes);
+    } catch (error) {
+      console.error("Failed to load QR codes:", error);
+    }
+  };
 
   const generateAllReelsQR = async () => {
     setIsGeneratingQR(true);
@@ -105,10 +112,10 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
                     <img 
                       src={allReelsQR} 
                       alt="All Reels QR Code"
-                      className="h-32 w-32 mx-auto mb-4 rounded-lg"
+                      className="h-32 w-32 mx-auto mb-4 rounded-lg color-palette-2xl"
                     />
                   ) : (
-                    <QrCode className="h-32 w-32 mx-auto mb-4 text-primary animate-float" />
+                    <QrCode className="h-32 w-32 mx-auto mb-4 text-primary animate-float color-palette-2xl" />
                   )}
                   <p className="text-sm text-muted-foreground">
                     Scan to access all video content
@@ -174,7 +181,7 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
                       <img 
                         src={currentVideo.qrCodeDataUrl} 
                         alt={`QR Code for ${currentVideo.title}`}
-                        className="w-32 h-32 mx-auto rounded-xl border border-border/50 animate-float"
+                        className="w-32 h-32 mx-auto rounded-xl border border-border/50 animate-float color-palette-2xl"
                       />
                     </div>
                     <div>
@@ -199,7 +206,7 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
                   </>
                 ) : (
                   <div className="p-4 bg-gradient-to-br from-muted/30 to-accent/20 rounded-2xl border border-border/30">
-                    <QrCode className="h-32 w-32 mx-auto text-muted-foreground opacity-50 animate-float" />
+                    <QrCode className="h-32 w-32 mx-auto text-muted-foreground opacity-50 animate-float color-palette-2xl" />
                     <p className="text-sm text-muted-foreground mt-3">
                       No reel playing
                     </p>

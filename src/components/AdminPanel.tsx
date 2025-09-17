@@ -20,8 +20,22 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    setQrCodes(getStoredQRCodes());
+    loadQRCodes();
   }, []);
+
+  const loadQRCodes = async () => {
+    try {
+      const codes = await getStoredQRCodes();
+      setQrCodes(codes);
+    } catch (error) {
+      console.error('Error loading QR codes:', error);
+      toast({
+        title: "Load Error",
+        description: "Failed to load QR codes",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleGenerateQR = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,8 +51,8 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
     setIsGenerating(true);
     try {
       const qrData = await generateQRCode(url, title);
-      saveQRCode(qrData);
-      setQrCodes(getStoredQRCodes());
+      await saveQRCode(qrData);
+      await loadQRCodes();
       setTitle('');
       setUrl('');
       
@@ -56,13 +70,21 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
     setIsGenerating(false);
   };
 
-  const handleDelete = (id: string) => {
-    deleteQRCode(id);
-    setQrCodes(getStoredQRCodes());
-    toast({
-      title: "QR Code Deleted",
-      description: "QR code has been removed successfully",
-    });
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteQRCode(id);
+      await loadQRCodes();
+      toast({
+        title: "QR Code Deleted",
+        description: "QR code has been removed successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Delete Error",
+        description: "Failed to delete QR code",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDownload = (qrData: QRCodeData) => {
