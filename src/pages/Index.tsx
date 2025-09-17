@@ -1,24 +1,62 @@
 import { useState, useEffect } from 'react';
+import { AdminLogin } from '@/components/AdminLogin';
 import { AdminPanel } from '@/components/AdminPanel';
 import { UserPanel } from '@/components/UserPanel';
 
 const Index = () => {
-  const [isAdminMode, setIsAdminMode] = useState(true);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [currentView, setCurrentView] = useState<'login' | 'admin' | 'user'>('login');
 
-  const handleToggleMode = () => {
-    setIsAdminMode(!isAdminMode);
+  useEffect(() => {
+    // Check if admin is already logged in
+    const isLoggedIn = localStorage.getItem('isAdminLoggedIn') === 'true';
+    if (isLoggedIn) {
+      setIsAdminLoggedIn(true);
+      setCurrentView('admin');
+    }
+  }, []);
+
+  const handleLogin = (isAdmin: boolean) => {
+    if (isAdmin) {
+      setIsAdminLoggedIn(true);
+      setCurrentView('admin');
+    } else {
+      setCurrentView('user');
+    }
   };
 
   const handleLogout = () => {
-    setIsAdminMode(true);
+    setIsAdminLoggedIn(false);
+    localStorage.removeItem('isAdminLoggedIn');
+    setCurrentView('login');
   };
 
-  if (isAdminMode) {
+  const handleBackToLogin = () => {
+    setCurrentView('login');
+  };
+
+  const handleSwitchToUser = () => {
+    setCurrentView('user');
+  };
+
+  const handleSwitchToAdmin = () => {
+    if (isAdminLoggedIn) {
+      setCurrentView('admin');
+    } else {
+      setCurrentView('login');
+    }
+  };
+
+  if (currentView === 'login') {
+    return <AdminLogin onLogin={handleLogin} />;
+  }
+
+  if (currentView === 'admin' && isAdminLoggedIn) {
     return (
       <div>
         <div className="absolute top-4 right-4">
           <button 
-            onClick={handleToggleMode}
+            onClick={handleSwitchToUser}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
           >
             Switch to User View
@@ -33,13 +71,13 @@ const Index = () => {
     <div>
       <div className="absolute top-4 right-4">
         <button 
-          onClick={handleToggleMode}
+          onClick={handleSwitchToAdmin}
           className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
         >
-          Switch to Admin View
+          Admin Panel
         </button>
       </div>
-      <UserPanel onBackToLogin={handleLogout} />
+      <UserPanel onBackToLogin={handleBackToLogin} />
     </div>
   );
 };
