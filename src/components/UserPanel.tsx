@@ -95,8 +95,8 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
 
       <div className="max-w-7xl mx-auto p-4 pb-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Section - Enhanced with modern icons */}
-          <div className="lg:col-span-3 space-y-4">
+          {/* Left-Middle Section - All Reels Section (spanning more columns) */}
+          <div className="lg:col-span-4 space-y-4">
             <Card className="glass-morphism shadow-card modern-hover animate-slide-in-up">
               <CardHeader className="text-center pb-3">
                 <CardTitle className="flex items-center justify-center gap-2 text-lg">
@@ -141,11 +141,10 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
                 </div>
               </CardContent>
             </Card>
-
           </div>
 
-          {/* Middle Section - Reel-style Video Player */}
-          <div className="lg:col-span-6">
+          {/* Middle Section - Video Player (Now Playing) */}
+          <div className="lg:col-span-5 space-y-4">
             {currentVideo ? (
               <div className="space-y-4 animate-slide-in-up">
                 <div className="flex items-center justify-between">
@@ -199,6 +198,7 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
                       title={currentVideo.title}
                       onVideoEnd={handleVideoEnd}
                       isReelStyle={true}
+                      autoPlay={true}
                     />
                   </div>
                 </div>
@@ -221,7 +221,7 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
             )}
           </div>
 
-          {/* Right Section - Enhanced Current QR */}
+          {/* Right Section - Current Reel and Queue */}
           <div className="lg:col-span-3 space-y-4">
             <Card className="glass-morphism shadow-card modern-hover animate-slide-in-up">
               <CardHeader className="text-center pb-3">

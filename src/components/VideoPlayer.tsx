@@ -2,30 +2,50 @@ import { useEffect, useRef, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
-import { processGoogleDriveUrl } from '@/lib/qrGenerator';
+import { generateGoogleDriveEmbedUrl, processGoogleDriveUrl } from '@/lib/qrGenerator';
 
 interface VideoPlayerProps {
   videoUrl: string;
   title: string;
   onVideoEnd?: () => void;
   isReelStyle?: boolean;
+  autoPlay?: boolean; // Add autoPlay prop
 }
 
-export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false }: VideoPlayerProps) => {
+export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, autoPlay = true }: VideoPlayerProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(true); // Start muted for autoplay
   const [progress, setProgress] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const isGoogleDrive = videoUrl.includes('drive.google.com');
-  const processedUrl = processGoogleDriveUrl(videoUrl);
+  const processedUrl = isGoogleDrive ? generateGoogleDriveEmbedUrl(videoUrl) : processGoogleDriveUrl(videoUrl);
 
   useEffect(() => {
     setIsLoading(true);
     setProgress(0);
   }, [videoUrl]);
+
+  // Add effect to auto-play when video is loaded
+  useEffect(() => {
+    if (autoPlay && videoRef.current && !isLoading) {
+      const playVideo = async () => {
+        try {
+          await videoRef.current?.play();
+          setIsPlaying(true);
+        } catch (error) {
+          console.log("Autoplay failed:", error);
+          setIsPlaying(false);
+        }
+      };
+      
+      // Small delay to ensure video is ready
+      const timer = setTimeout(playVideo, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [videoUrl, isLoading, autoPlay]);
 
   const togglePlayPause = () => {
     if (videoRef.current) {
@@ -72,15 +92,18 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false }
         )}
 
         {isGoogleDrive ? (
-          <iframe
-            ref={iframeRef}
-            src={processedUrl}
-            className="w-full h-full"
-            allow="autoplay; fullscreen"
-            allowFullScreen
-            onLoad={() => setIsLoading(false)}
-            title={title}
-          />
+          <div className="video-iframe-container">
+            <iframe
+              ref={iframeRef}
+              src={processedUrl}
+              className="video-iframe"
+              allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+              allowFullScreen
+              onLoad={() => setIsLoading(false)}
+              title={title}
+              sandbox="allow-scripts allow-same-origin allow-presentation allow-popups-to-escape-sandbox"
+            />
+          </div>
         ) : (
           <>
             <video

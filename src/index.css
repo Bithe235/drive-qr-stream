@@ -1,9 +1,10 @@
+/* QR Drive Video Management System - Modern Design System */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Required Tailwind directives */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* QR Drive Video Management System - Modern Design System */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 @layer base {
   :root {
@@ -135,6 +136,28 @@
   
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-primary;
+  }
+
+  /* Video iframe styling for better scaling */
+  .video-iframe-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #000;
+  }
+
+  .video-iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    object-fit: cover;
+    /* Transform to scale video and eliminate black bars */
+    transform: scale(1.05);
+    transform-origin: center;
   }
 
   /* Modern reel-style animations */

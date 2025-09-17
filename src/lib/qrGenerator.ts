@@ -72,8 +72,20 @@ export const processGoogleDriveUrl = (url: string): string => {
   if (driveMatch) {
     const fileId = url.match(/[-\w]{25,}/)?.[0];
     if (fileId) {
-      return `https://drive.google.com/file/d/${fileId}/preview`;
+      // Use embed URL with parameters for better scaling and fullscreen support
+      return `https://drive.google.com/file/d/${fileId}/preview?usp=drivesdk&embed=true`;
     }
+  }
+  return url;
+};
+
+// New function to generate embed URL with better scaling options
+export const generateGoogleDriveEmbedUrl = (url: string): string => {
+  const fileIdMatch = url.match(/[-\w]{25,}/);
+  if (fileIdMatch) {
+    const fileId = fileIdMatch[0];
+    // Use the Google Drive embed URL with parameters optimized for video scaling
+    return `https://drive.google.com/file/d/${fileId}/preview?usp=drivesdk&embed=true`;
   }
   return url;
 };
