@@ -6,6 +6,7 @@ import { VideoPlayer } from './VideoPlayer';
 import { getStoredQRCodes, downloadQRCode, QRCodeData } from '@/lib/qrGenerator';
 import { QrCode, Download, Play, Video } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { CacheTest } from './CacheTest';
 
 interface UserPanelProps {
   onBackToLogin: () => void;
@@ -100,6 +101,8 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
                   <Video className="h-3 w-3" />
                   <span>{qrCodes.length} videos available</span>
                 </div>
+                {/* Add cache test component */}
+                <CacheTest />
               </CardContent>
             </Card>
           </div>
@@ -116,6 +119,7 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
                       title={currentVideo.title}
                       onVideoEnd={handleVideoEnd}
                       isReelStyle={true}
+                      videoId={currentVideo.id} // Pass video ID for caching
                     />
                   </div>
                 </div>

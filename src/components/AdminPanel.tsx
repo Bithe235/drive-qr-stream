@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { generateQRCode, saveQRCode, getStoredQRCodes, deleteQRCode, downloadQRCode, QRCodeData, uploadVideoAndGenerateQR } from '@/lib/qrGenerator';
 import { QrCode, Upload, FileVideo, Download, Trash2 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { compressVideoAdvanced, isCompressionSupported } from '@/lib/videoCompressorAdvanced';
 
 interface AdminPanelProps {
   onLogout: () => void;
@@ -17,11 +18,18 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
   const [title, setTitle] = useState('');
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [compressionInfo, setCompressionInfo] = useState<{ originalSize: number; compressedSize: number; ratio: number; time: number } | null>(null);
+  const [compressionSupported, setCompressionSupported] = useState(true); // Check if compression is supported
   const [qrCodes, setQrCodes] = useState<QRCodeData[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
+    // Check if compression is supported
+    setCompressionSupported(isCompressionSupported());
+    
     loadQRCodes();
   }, []);
 
@@ -44,6 +52,7 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
       const file = e.target.files[0];
       if (file.type.startsWith('video/')) {
         setVideoFile(file);
+        setCompressionInfo(null);
       } else {
         toast({
           title: "Invalid File Type",
@@ -64,6 +73,7 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
       const file = e.dataTransfer.files[0];
       if (file.type.startsWith('video/')) {
         setVideoFile(file);
+        setCompressionInfo(null);
       } else {
         toast({
           title: "Invalid File Type",
@@ -71,6 +81,59 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
           variant: "destructive",
         });
       }
+    }
+  };
+
+  // Add function to compress video
+  const compressVideoFile = async (file: File): Promise<File> => {
+    if (!compressionSupported) {
+      console.log('Video compression not supported, uploading original file');
+      return file;
+    }
+    
+    setIsCompressing(true);
+    try {
+      console.log('Compressing video file:', file.name);
+      
+      // Compress the video with advanced compression
+      const result = await compressVideoAdvanced(file, {
+        quality: file.size > 20 * 1024 * 1024 ? 'low' : 'medium', // Use low quality for large files
+        maxWidth: 1280,
+        maxHeight: 720
+      });
+      
+      // Create a new File object from the compressed blob
+      const compressedFile = new File([result.blob], `compressed_${file.name}`, {
+        type: 'video/mp4',
+        lastModified: Date.now()
+      });
+      
+      // Set compression info for display
+      setCompressionInfo({
+        originalSize: result.originalSize,
+        compressedSize: result.compressedSize,
+        ratio: result.compressionRatio,
+        time: result.processingTime
+      });
+      
+      console.log('Video compression completed:', {
+        originalSize: result.originalSize,
+        compressedSize: result.compressedSize,
+        compressionRatio: result.compressionRatio,
+        processingTime: result.processingTime
+      });
+      
+      return compressedFile;
+    } catch (error) {
+      console.error('Error compressing video:', error);
+      toast({
+        title: "Compression Error",
+        description: "Failed to compress video. Uploading original file.",
+        variant: "destructive",
+      });
+      return file; // Return original file if compression fails
+    } finally {
+      setIsCompressing(false);
     }
   };
 
@@ -85,14 +148,26 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
     }
 
     setIsUploading(true);
+    setUploadProgress(0);
     try {
-      // Upload video and generate QR code
-      const qrData = await uploadVideoAndGenerateQR(videoFile, title);
+      // Compress the video before uploading
+      let fileToUpload = videoFile;
+      if (videoFile.size > 5 * 1024 * 1024) { // Only compress if larger than 5MB
+        console.log('Video is larger than 5MB, compressing...');
+        fileToUpload = await compressVideoFile(videoFile);
+      }
+      
+      // Upload video and generate QR code with progress tracking
+      const qrData = await uploadVideoAndGenerateQR(fileToUpload, title, (progress) => {
+        setUploadProgress(progress);
+      });
       await loadQRCodes();
       
       // Reset form
       setTitle('');
       setVideoFile(null);
+      setCompressionInfo(null);
+      setUploadProgress(0);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -102,6 +177,7 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
         description: "Video has been uploaded and QR code generated successfully",
       });
     } catch (error: any) {
+      setUploadProgress(0);
       toast({
         title: "Upload Failed",
         description: error.message || "Failed to upload video or generate QR code. Please try again.",
@@ -205,6 +281,12 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
                   <p className="text-sm text-muted-foreground mt-1">
                     {videoFile ? `${(videoFile.size / (1024 * 1024)).toFixed(2)} MB` : "or click to browse files"}
                   </p>
+                  {compressionInfo && (
+                    <div className="text-sm text-green-500 mt-2">
+                      Compressed: {((compressionInfo.originalSize - compressionInfo.compressedSize) / 1024 / 1024).toFixed(2)} MB saved 
+                      ({compressionInfo.ratio * 100}% reduction)
+                    </div>
+                  )}
                 </div>
                 {videoFile && (
                   <Button 
@@ -213,6 +295,7 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
                     onClick={(e) => {
                       e.stopPropagation();
                       setVideoFile(null);
+                      setCompressionInfo(null);
                       if (fileInputRef.current) {
                         fileInputRef.current.value = '';
                       }
@@ -224,14 +307,44 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
               </div>
             </div>
             
+            {/* Show compression progress */}
+            {isCompressing && (
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div 
+                  className="bg-blue-600 h-2.5 rounded-full" 
+                  style={{ width: '70%' }} // Simulate progress
+                ></div>
+              </div>
+            )}
+            
+            {/* Show upload progress */}
+            {isUploading && (
+              <div className="space-y-2">
+                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                  <div 
+                    className="bg-green-600 h-2.5 rounded-full" 
+                    style={{ width: `${uploadProgress}%` }}
+                  ></div>
+                </div>
+                <p className="text-center text-sm text-muted-foreground">
+                  Uploading... {uploadProgress}%
+                </p>
+              </div>
+            )}
+            
             <Button 
               onClick={handleUploadVideo} 
               variant="premium" 
               size="lg" 
               className="w-full"
-              disabled={isUploading || !videoFile}
+              disabled={isUploading || isCompressing || !videoFile}
             >
-              {isUploading ? (
+              {isCompressing ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-foreground mr-2" />
+                  Compressing...
+                </>
+              ) : isUploading ? (
                 <>
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-foreground mr-2" />
                   Uploading...

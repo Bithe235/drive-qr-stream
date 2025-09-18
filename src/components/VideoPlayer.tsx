@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Volume2, VolumeX, Maximize, Minimize } from 'lucide-react';
 import { generateGoogleDriveEmbedUrl, processGoogleDriveUrl, generateMegaEmbedUrl } from '@/lib/qrGenerator';
+import { getCachedVideoUrl } from '../lib/videoCache';
 
 // Function to transform Appwrite URLs for proper playback
 export const transformAppwriteUrlForPlayback = (url: string): string => {
@@ -47,16 +48,18 @@ interface VideoPlayerProps {
   onVideoEnd?: () => void;
   isReelStyle?: boolean;
   autoPlay?: boolean;
+  videoId?: string; // Add videoId for caching
 }
 
-export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, autoPlay = true }: VideoPlayerProps) => {
+export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, autoPlay = true, videoId }: VideoPlayerProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [previousVolume, setPreviousVolume] = useState(1);
   const [showControls, setShowControls] = useState(false);
-  const [error, setError] = useState<string | null>(null); // Add error state
+  const [error, setError] = useState<string | null>(null);
+  const [effectiveVideoUrl, setEffectiveVideoUrl] = useState<string>(videoUrl); // Add state for effective URL
   const videoRef = useRef<HTMLVideoElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -66,8 +69,8 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
 
   const isGoogleDrive = videoUrl.includes('drive.google.com');
   const isAppwriteVideo = videoUrl.includes('appwrite.io/v1/storage');
-  const isMegaVideo = videoUrl.includes('mega.nz'); // Add Mega.nz detection
-  const isIframeVideo = isGoogleDrive || isMegaVideo; // Define iframe video check early
+  const isMegaVideo = videoUrl.includes('mega.nz');
+  const isIframeVideo = isGoogleDrive || isMegaVideo;
   
   // Transform Appwrite URLs to use the view endpoint with project parameter for proper playback
   const processedUrl = isGoogleDrive 
@@ -75,7 +78,7 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
     : isAppwriteVideo
       ? transformAppwriteUrlForPlayback(videoUrl)
       : isMegaVideo
-        ? generateMegaEmbedUrl(videoUrl) // Add Mega.nz URL processing
+        ? generateMegaEmbedUrl(videoUrl)
         : videoUrl;
 
   // Log the video URL for debugging
@@ -86,6 +89,33 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
     console.log('VideoPlayer: processedUrl=', processedUrl);
     setError(null); // Reset error when URL changes
   }, [videoUrl, isGoogleDrive, isAppwriteVideo, processedUrl]);
+
+  // Handle caching for Appwrite videos
+  useEffect(() => {
+    const handleCaching = async () => {
+      // Only cache Appwrite videos that have a videoId
+      if (isAppwriteVideo && videoId) {
+        try {
+          console.log('Checking cache for video:', { videoId, processedUrl });
+          const cachedUrl = await getCachedVideoUrl(videoId, processedUrl);
+          if (cachedUrl) {
+            console.log('Using cached video:', videoId, cachedUrl);
+            setEffectiveVideoUrl(cachedUrl);
+          } else {
+            console.log('Using original video URL:', processedUrl);
+            setEffectiveVideoUrl(processedUrl);
+          }
+        } catch (e) {
+          console.error('Error handling video cache:', e);
+          setEffectiveVideoUrl(processedUrl);
+        }
+      } else {
+        setEffectiveVideoUrl(processedUrl);
+      }
+    };
+
+    handleCaching();
+  }, [videoUrl, isAppwriteVideo, videoId, processedUrl]);
 
   useEffect(() => {
     setIsLoading(true);
@@ -264,9 +294,13 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
         if (loadTimeout) {
           clearTimeout(loadTimeout);
         }
+        // Revoke blob URL to free memory
+        if (effectiveVideoUrl !== videoUrl && effectiveVideoUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(effectiveVideoUrl);
+        }
       };
     }
-  }, [isGoogleDrive, isMegaVideo, onVideoEnd, videoUrl, autoPlay, error, isLoading]); // Add isMegaVideo to dependencies
+  }, [isGoogleDrive, isMegaVideo, onVideoEnd, effectiveVideoUrl, autoPlay, error, isLoading, videoUrl]); // Add isMegaVideo to dependencies
 
   // Handle fullscreen changes
   useEffect(() => {
@@ -400,7 +434,7 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
           <>
             <video
               ref={videoRef}
-              src={processedUrl}
+              src={effectiveVideoUrl} // Use the effective URL (cached or original)
               className="w-full h-full object-cover"
               onLoadedData={() => {
                 console.log("Video onLoadedData triggered");
@@ -483,6 +517,8 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
           <h3 className="font-semibold text-foreground truncate">{title}</h3>
           <p className="text-sm text-muted-foreground mt-1">
             {isGoogleDrive ? 'Google Drive Video' : isMegaVideo ? 'Mega.nz Video' : isAppwriteVideo ? 'Appwrite Hosted Video' : 'Direct Video'}
+            {videoId && isAppwriteVideo && ' (Cached)' // Show cached status
+}
           </p>
         </div>
       )}

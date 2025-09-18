@@ -63,6 +63,57 @@ export const uploadVideo = async (file: File): Promise<string> => {
   }
 };
 
+// Function to upload a video file to Appwrite storage with progress tracking
+export const uploadVideoWithProgress = async (file: File, onProgress: (progress: number) => void): Promise<string> => {
+  try {
+    // Check file size before upload (Appwrite default limit is often 30MB)
+    const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30MB in bytes
+    if (file.size > MAX_FILE_SIZE) {
+      throw new Error(`File size exceeds limit. File is ${(file.size / (1024 * 1024)).toFixed(2)}MB, maximum allowed is 30MB. Please compress the video or contact administrator to increase limit.`);
+    }
+    
+    // Create a custom upload function with progress tracking
+    // Note: Appwrite SDK doesn't directly support progress tracking, so we'll simulate it
+    console.log('Starting upload with progress tracking');
+    onProgress(10); // Start progress
+    
+    // Simulate progress during upload
+    let progress = 10;
+    const progressInterval = setInterval(() => {
+      // This is a simplified simulation - in a real implementation, we would track actual upload progress
+      progress = Math.min(progress + 5, 90);
+      onProgress(progress);
+    }, 300);
+    
+    const response = await storage.createFile(
+      BUCKET_ID,
+      ID.unique(),
+      file,
+      // Add permissions to make the file publicly readable
+      [
+        Permission.read(Role.any())
+      ]
+    );
+    
+    clearInterval(progressInterval);
+    onProgress(100); // Complete progress
+    
+    // Return the file URL - using the view URL for direct playback
+    // This is more appropriate for embedding in video elements
+    // Also add project parameter for proper authentication
+    return `${import.meta.env.VITE_APPWRITE_ENDPOINT || 'http://104.196.96.133/v1'}/storage/buckets/${BUCKET_ID}/files/${response.$id}/view?project=${import.meta.env.VITE_APPWRITE_PROJECT_ID || '68cc34530013d4a93bde'}`;
+  } catch (error: any) {
+    console.error('Error uploading video to Appwrite:', error);
+    
+    // Provide more specific error message for file size issues
+    if (error.message && error.message.includes('size')) {
+      throw new Error(`File upload failed: ${error.message}. Please try a smaller file or contact administrator to increase storage limits.`);
+    }
+    
+    throw error;
+  }
+};
+
 // Function to delete a video file from Appwrite storage
 export const deleteVideoStorage = async (fileUrl: string): Promise<void> => {
   try {
