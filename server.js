@@ -8,7 +8,7 @@ const port = process.env.PORT || 3001;
 
 // Enable CORS for all routes
 app.use(cors());
-
+///
 // Proxy middleware for Appwrite requests
 const appwriteProxy = createProxyMiddleware({
   target: 'https://fra.cloud.appwrite.io',
