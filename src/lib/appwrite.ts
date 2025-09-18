@@ -5,8 +5,25 @@ import { QRCodeData } from './qrGenerator';
 const client = new Client();
 
 // Configure client with environment variables
-// Use HTTPS for Vercel deployments to avoid mixed content errors
-const appwriteEndpoint = import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://104.196.96.133/v1';
+// Check if we're in a browser environment
+const isBrowser = typeof window !== 'undefined';
+
+// Determine the appropriate endpoint based on environment
+let appwriteEndpoint = import.meta.env.VITE_APPWRITE_ENDPOINT || 'http://104.196.96.133/v1';
+
+// For Vercel deployments, we recommend using a proxy or valid SSL certificate
+// But we'll provide a fallback mechanism
+if (isBrowser && window.location.protocol === 'https:') {
+  // If the app is loaded over HTTPS, try to use HTTPS for Appwrite as well
+  // But allow override via environment variable
+  if (!import.meta.env.VITE_APPWRITE_ENDPOINT) {
+    // Default to HTTPS for HTTPS sites, but developers should set up proper SSL
+    appwriteEndpoint = 'https://104.196.96.133/v1';
+  }
+}
+
+console.log('Appwrite endpoint:', appwriteEndpoint);
+
 client
   .setEndpoint(appwriteEndpoint)
   .setProject(import.meta.env.VITE_APPWRITE_PROJECT_ID || '68cc34530013d4a93bde');
@@ -19,6 +36,20 @@ const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID || '68cc3cf7000298
 const COLLECTION_ID = import.meta.env.VITE_APPWRITE_COLLECTION_ID || '68cc3cfe002004da88d8';
 const BUCKET_ID = import.meta.env.VITE_APPWRITE_STORAGE_BUCKET_ID || '68cc347a002ee79489e2';
 
+// Enhanced error handling for certificate issues
+const handleAppwriteError = (error: any, operation: string) => {
+  console.error(`Error during ${operation}:`, error);
+  
+  // Check if it's a certificate error
+  if (error instanceof TypeError && error.message.includes('fetch')) {
+    console.warn('This might be a certificate issue. If deploying on Vercel, you may need to:');
+    console.warn('1. Visit the Appwrite endpoint directly in your browser to accept the certificate');
+    console.warn('2. Or set up a reverse proxy with a valid SSL certificate');
+  }
+  
+  throw error;
+};
+
 // Function to initialize the database (if needed)
 export const initDatabase = async () => {
   try {
@@ -26,7 +57,7 @@ export const initDatabase = async () => {
     // For now, we assume they're already created in your Appwrite project
     console.log('Appwrite database initialized');
   } catch (error) {
-    console.error('Error initializing Appwrite database:', error);
+    handleAppwriteError(error, 'database initialization');
   }
 };
 
@@ -61,7 +92,7 @@ export const uploadVideo = async (file: File): Promise<string> => {
       throw new Error(`File upload failed: ${error.message}. Please try a smaller file or contact administrator to increase storage limits.`);
     }
     
-    throw error;
+    handleAppwriteError(error, 'video upload');
   }
 };
 
@@ -112,7 +143,7 @@ export const uploadVideoWithProgress = async (file: File, onProgress: (progress:
       throw new Error(`File upload failed: ${error.message}. Please try a smaller file or contact administrator to increase storage limits.`);
     }
     
-    throw error;
+    handleAppwriteError(error, 'video upload with progress');
   }
 };
 
@@ -120,8 +151,7 @@ export const uploadVideoWithProgress = async (file: File, onProgress: (progress:
 export const deleteVideoStorage = async (fileUrl: string): Promise<void> => {
   try {
     // Extract file ID from the URL
-    // URL format: https://104.196.96.133/v1/storage/buckets/BUCKET_ID/files/FILE_ID/view?project=PROJECT_ID
-    // or: http://104.196.96.133/v1/storage/buckets/BUCKET_ID/files/FILE_ID/view?project=PROJECT_ID
+    // URL format: http://104.196.96.133/v1/storage/buckets/BUCKET_ID/files/FILE_ID/view?project=PROJECT_ID
     const urlParts = fileUrl.split('/');
     const fileIdIndex = urlParts.indexOf('files') + 1;
     
@@ -135,7 +165,7 @@ export const deleteVideoStorage = async (fileUrl: string): Promise<void> => {
       console.warn('Could not extract file ID from URL for deletion:', fileUrl);
     }
   } catch (error) {
-    console.error('Error deleting video from Appwrite storage:', error);
+    handleAppwriteError(error, 'video deletion');
     // Don't throw error as we still want to delete the database entry
   }
 };
@@ -208,7 +238,7 @@ export const saveQRCodeToAppwrite = async (qrData: QRCodeData): Promise<QRCodeDa
         throw error; // Throw the original error if minimal approach also fails
       }
     }
-    throw error;
+    handleAppwriteError(error, 'QR code saving');
   }
 };
 
@@ -230,7 +260,7 @@ export const getQRCodesFromAppwrite = async (): Promise<QRCodeData[]> => {
       createdAt: doc.createdAt || new Date().toISOString()
     })) as QRCodeData[];
   } catch (error) {
-    console.error('Error fetching QR codes from Appwrite:', error);
+    handleAppwriteError(error, 'fetching QR codes');
     return [];
   }
 };
@@ -252,7 +282,6 @@ export const deleteQRCodeFromAppwrite = async (id: string, fileUrl?: string): Pr
     
     console.log(`Successfully deleted QR code ${id} from Appwrite database`);
   } catch (error) {
-    console.error('Error deleting QR code from Appwrite:', error);
-    throw error;
+    handleAppwriteError(error, 'QR code deletion');
   }
 };
