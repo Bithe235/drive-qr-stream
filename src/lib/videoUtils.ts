@@ -4,8 +4,7 @@
 // This ensures that the same video file gets the same cache key even if the URL changes
 export const extractVideoIdentifier = (videoUrl: string): string | null => {
   // For Appwrite URLs, extract the file ID from the URL path
-  // Format: http://104.196.96.133/v1/storage/buckets/BUCKET_ID/files/FILE_ID/view?project=PROJECT_ID
-  // or: https://104.196.96.133/v1/storage/buckets/BUCKET_ID/files/FILE_ID/view?project=PROJECT_ID
+  // Format: https://fra.cloud.appwrite.io/v1/storage/buckets/BUCKET_ID/files/FILE_ID/view?project=PROJECT_ID
   const appwriteMatch = videoUrl.match(/\/files\/([^\/]+)\/view/);
   if (appwriteMatch) {
     return appwriteMatch[1]; // Return the file ID

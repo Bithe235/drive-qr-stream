@@ -13,21 +13,21 @@ const isVercel = isBrowser && window.location.hostname.includes('vercel.app');
 // For local development, use direct connection
 const appwriteEndpoint = isVercel 
   ? '/api/appwrite-proxy'  // Local proxy endpoint
-  : 'http://104.196.96.133/v1';  // Direct connection
+  : 'https://fra.cloud.appwrite.io/v1';  // Direct connection to your new endpoint
 
 console.log('Appwrite endpoint:', appwriteEndpoint);
 
 client
   .setEndpoint(appwriteEndpoint)
-  .setProject(import.meta.env.VITE_APPWRITE_PROJECT_ID || '68cc34530013d4a93bde');
+  .setProject(import.meta.env.VITE_APPWRITE_PROJECT_ID || '68ca9e8e000ddba95beb');
 
 const databases = new Databases(client);
 const storage = new Storage(client);
 
 // Database and collection IDs
-const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID || '68cc3cf7000298db6360';
-const COLLECTION_ID = import.meta.env.VITE_APPWRITE_COLLECTION_ID || '68cc3cfe002004da88d8';
-const BUCKET_ID = import.meta.env.VITE_APPWRITE_STORAGE_BUCKET_ID || '68cc347a002ee79489e2';
+const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID || '68ca9f760003f35cf8ca';
+const COLLECTION_ID = import.meta.env.VITE_APPWRITE_COLLECTION_ID || 'qrcode';
+const BUCKET_ID = import.meta.env.VITE_APPWRITE_STORAGE_BUCKET_ID || '68caacec001fd1ff6b9d';
 
 // Enhanced error handling for certificate issues
 const handleAppwriteError = (error: any, operation: string) => {
@@ -76,7 +76,7 @@ export const uploadVideo = async (file: File): Promise<string> => {
     // Return the file URL - using the view URL for direct playback
     // This is more appropriate for embedding in video elements
     // Also add project parameter for proper authentication
-    return `${appwriteEndpoint}/storage/buckets/${BUCKET_ID}/files/${response.$id}/view?project=${import.meta.env.VITE_APPWRITE_PROJECT_ID || '68cc34530013d4a93bde'}`;
+    return `${appwriteEndpoint}/storage/buckets/${BUCKET_ID}/files/${response.$id}/view?project=${import.meta.env.VITE_APPWRITE_PROJECT_ID || '68ca9e8e000ddba95beb'}`;
   } catch (error: any) {
     console.error('Error uploading video to Appwrite:', error);
     
@@ -127,7 +127,7 @@ export const uploadVideoWithProgress = async (file: File, onProgress: (progress:
     // Return the file URL - using the view URL for direct playback
     // This is more appropriate for embedding in video elements
     // Also add project parameter for proper authentication
-    return `${appwriteEndpoint}/storage/buckets/${BUCKET_ID}/files/${response.$id}/view?project=${import.meta.env.VITE_APPWRITE_PROJECT_ID || '68cc34530013d4a93bde'}`;
+    return `${appwriteEndpoint}/storage/buckets/${BUCKET_ID}/files/${response.$id}/view?project=${import.meta.env.VITE_APPWRITE_PROJECT_ID || '68ca9e8e000ddba95beb'}`;
   } catch (error: any) {
     console.error('Error uploading video to Appwrite:', error);
     

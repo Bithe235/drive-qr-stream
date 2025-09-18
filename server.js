@@ -11,7 +11,7 @@ app.use(cors());
 
 // Proxy middleware for Appwrite requests
 const appwriteProxy = createProxyMiddleware({
-  target: 'http://104.196.96.133:80',
+  target: 'https://fra.cloud.appwrite.io',
   changeOrigin: true,
   pathRewrite: {
     '^/api/appwrite-proxy': '/v1', // Remove the proxy prefix

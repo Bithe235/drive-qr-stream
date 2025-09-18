@@ -1,10 +1,10 @@
 // Vercel API route to proxy Appwrite requests
-import { NextApiRequest, NextApiResponse } from 'next';
+import { Request, Response } from 'express';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: Request, res: Response) {
   try {
     // Get the Appwrite endpoint from environment variables or use default
-    const appwriteEndpoint = process.env.APPWRITE_ENDPOINT || 'http://104.196.96.133/v1';
+    const appwriteEndpoint = process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1';
     
     // Construct the full URL
     const url = `${appwriteEndpoint}${req.query.path || ''}`;
@@ -21,6 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         'connection': undefined,
         'content-length': undefined,
       },
+      // @ts-ignore
       body: req.method !== 'GET' && req.method !== 'HEAD' ? JSON.stringify(req.body) : undefined,
     });
     
