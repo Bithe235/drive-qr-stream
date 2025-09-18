@@ -5,8 +5,10 @@ import { QRCodeData } from './qrGenerator';
 const client = new Client();
 
 // Configure client with environment variables
+// Use HTTPS for Vercel deployments to avoid mixed content errors
+const appwriteEndpoint = import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://104.196.96.133/v1';
 client
-  .setEndpoint(import.meta.env.VITE_APPWRITE_ENDPOINT || 'http://104.196.96.133/v1')
+  .setEndpoint(appwriteEndpoint)
   .setProject(import.meta.env.VITE_APPWRITE_PROJECT_ID || '68cc34530013d4a93bde');
 
 const databases = new Databases(client);
@@ -50,7 +52,7 @@ export const uploadVideo = async (file: File): Promise<string> => {
     // Return the file URL - using the view URL for direct playback
     // This is more appropriate for embedding in video elements
     // Also add project parameter for proper authentication
-    return `${import.meta.env.VITE_APPWRITE_ENDPOINT || 'http://104.196.96.133/v1'}/storage/buckets/${BUCKET_ID}/files/${response.$id}/view?project=${import.meta.env.VITE_APPWRITE_PROJECT_ID || '68cc34530013d4a93bde'}`;
+    return `${appwriteEndpoint}/storage/buckets/${BUCKET_ID}/files/${response.$id}/view?project=${import.meta.env.VITE_APPWRITE_PROJECT_ID || '68cc34530013d4a93bde'}`;
   } catch (error: any) {
     console.error('Error uploading video to Appwrite:', error);
     
@@ -101,7 +103,7 @@ export const uploadVideoWithProgress = async (file: File, onProgress: (progress:
     // Return the file URL - using the view URL for direct playback
     // This is more appropriate for embedding in video elements
     // Also add project parameter for proper authentication
-    return `${import.meta.env.VITE_APPWRITE_ENDPOINT || 'http://104.196.96.133/v1'}/storage/buckets/${BUCKET_ID}/files/${response.$id}/view?project=${import.meta.env.VITE_APPWRITE_PROJECT_ID || '68cc34530013d4a93bde'}`;
+    return `${appwriteEndpoint}/storage/buckets/${BUCKET_ID}/files/${response.$id}/view?project=${import.meta.env.VITE_APPWRITE_PROJECT_ID || '68cc34530013d4a93bde'}`;
   } catch (error: any) {
     console.error('Error uploading video to Appwrite:', error);
     
@@ -118,7 +120,8 @@ export const uploadVideoWithProgress = async (file: File, onProgress: (progress:
 export const deleteVideoStorage = async (fileUrl: string): Promise<void> => {
   try {
     // Extract file ID from the URL
-    // URL format: http://104.196.96.133/v1/storage/buckets/BUCKET_ID/files/FILE_ID/view?project=PROJECT_ID
+    // URL format: https://104.196.96.133/v1/storage/buckets/BUCKET_ID/files/FILE_ID/view?project=PROJECT_ID
+    // or: http://104.196.96.133/v1/storage/buckets/BUCKET_ID/files/FILE_ID/view?project=PROJECT_ID
     const urlParts = fileUrl.split('/');
     const fileIdIndex = urlParts.indexOf('files') + 1;
     
