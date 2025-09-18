@@ -1,5 +1,5 @@
 import QRCode from 'qrcode';
-import { saveQRCodeToAppwrite, getQRCodesFromAppwrite, deleteQRCodeFromAppwrite, uploadVideo, compressVideo } from './appwrite';
+import { saveQRCodeToAppwrite, getQRCodesFromAppwrite, deleteQRCodeFromAppwrite, uploadVideo, compressVideo, updateQRCodeInAppwrite, updateOldQRCodeUrls } from './appwrite';
 
 export interface QRCodeData {
   id: string;
@@ -162,4 +162,23 @@ export const generateMegaEmbedUrl = (url: string): string => {
   
   // If we can't parse it, return the original URL
   return url;
+};
+
+export const updateOldUrls = async (): Promise<void> => {
+  try {
+    await updateOldQRCodeUrls();
+  } catch (error) {
+    console.error('Error updating old URLs:', error);
+    throw error;
+  }
+};
+
+export const updateQRCode = async (id: string, qrData: QRCodeData, serverType?: 'primary' | 'fallback'): Promise<QRCodeData> => {
+  try {
+    const updatedQRData = await updateQRCodeInAppwrite(id, qrData, serverType);
+    return updatedQRData;
+  } catch (error) {
+    console.error('Error updating QR code in Appwrite:', error);
+    throw error;
+  }
 };

@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { generateQRCode, saveQRCode, getStoredQRCodes, deleteQRCode, downloadQRCode, QRCodeData, uploadVideoAndGenerateQR } from '@/lib/qrGenerator';
+import { generateQRCode, saveQRCode, getStoredQRCodes, deleteQRCode, downloadQRCode, QRCodeData, uploadVideoAndGenerateQR, updateOldUrls } from '@/lib/qrGenerator';
 import { QrCode, Upload, FileVideo, Download, Trash2, Server } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
@@ -29,6 +29,10 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
 
   useEffect(() => {
     loadQRCodes();
+    // Automatically check and update old URLs on load
+    updateOldUrls().catch(error => {
+      console.error('Error updating old URLs on load:', error);
+    });
   }, []);
 
   const loadQRCodes = async () => {
@@ -174,6 +178,23 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
     });
   };
 
+  const handleUpdateOldUrls = async () => {
+    try {
+      await updateOldUrls();
+      await loadQRCodes();
+      toast({
+        title: "URLs Updated",
+        description: "Successfully updated old URLs to use HTTPS",
+      });
+    } catch (error) {
+      toast({
+        title: "Update Failed",
+        description: "Failed to update old URLs",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-dark p-4">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -253,6 +274,27 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
                 </div>
               )}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Update Old URLs Card */}
+        <Card className="bg-card/80 backdrop-blur-lg border-border/50 shadow-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Server className="h-5 w-5" />
+              Update Old URLs
+            </CardTitle>
+            <CardDescription>
+              Update old QR codes with HTTP URLs to use HTTPS
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              If you're seeing mixed content errors, click the button below to update old QR codes to use the new HTTPS endpoint.
+            </p>
+            <Button onClick={handleUpdateOldUrls} variant="outline">
+              Update Old URLs to HTTPS
+            </Button>
           </CardContent>
         </Card>
 

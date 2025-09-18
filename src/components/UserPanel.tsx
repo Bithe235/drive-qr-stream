@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { VideoPlayer } from './VideoPlayer';
-import { getStoredQRCodes, downloadQRCode, QRCodeData, generateQRCode } from '@/lib/qrGenerator';
+import { getStoredQRCodes, downloadQRCode, QRCodeData, generateQRCode, updateOldUrls } from '@/lib/qrGenerator';
 import { QrCode, Download, Play, Video } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
@@ -20,6 +20,10 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
     loadQRCodes();
     // Generate QR code for all reels
     generateAllReelsQR();
+    // Automatically check and update old URLs on load
+    updateOldUrls().catch(error => {
+      console.error('Error updating old URLs on load:', error);
+    });
   }, []);
 
   const loadQRCodes = async () => {
