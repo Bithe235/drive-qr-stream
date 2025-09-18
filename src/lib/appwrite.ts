@@ -4,17 +4,18 @@ import { QRCodeData } from './qrGenerator';
 // Appwrite configuration
 const client = new Client();
 
+// Configure client with environment variables
 client
-  .setEndpoint('http://34.23.98.230/v1')
-  .setProject('68cb051f0013a0d8aa89');
+  .setEndpoint(import.meta.env.VITE_APPWRITE_ENDPOINT || 'http://104.196.96.133/v1')
+  .setProject(import.meta.env.VITE_APPWRITE_PROJECT_ID || '68cc34530013d4a93bde');
 
 const databases = new Databases(client);
 const storage = new Storage(client);
 
 // Database and collection IDs
-const DATABASE_ID = '68cb06140031a586fe2b'; // Updated to your database ID
-const COLLECTION_ID = '68cb061c00209aeffa1d'; // Updated to your collection ID
-const BUCKET_ID = '68cb057c002ca64682a2'; // Your bucket ID
+const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID || '68cc3cf7000298db6360';
+const COLLECTION_ID = import.meta.env.VITE_APPWRITE_COLLECTION_ID || '68cc3cfe002004da88d8';
+const BUCKET_ID = import.meta.env.VITE_APPWRITE_STORAGE_BUCKET_ID || '68cc347a002ee79489e2';
 
 // Function to initialize the database (if needed)
 export const initDatabase = async () => {
@@ -49,7 +50,7 @@ export const uploadVideo = async (file: File): Promise<string> => {
     // Return the file URL - using the view URL for direct playback
     // This is more appropriate for embedding in video elements
     // Also add project parameter for proper authentication
-    return `http://34.23.98.230/v1/storage/buckets/${BUCKET_ID}/files/${response.$id}/view?project=68cb051f0013a0d8aa89`;
+    return `${import.meta.env.VITE_APPWRITE_ENDPOINT || 'http://104.196.96.133/v1'}/storage/buckets/${BUCKET_ID}/files/${response.$id}/view?project=${import.meta.env.VITE_APPWRITE_PROJECT_ID || '68cc34530013d4a93bde'}`;
   } catch (error: any) {
     console.error('Error uploading video to Appwrite:', error);
     
@@ -66,7 +67,7 @@ export const uploadVideo = async (file: File): Promise<string> => {
 export const deleteVideoStorage = async (fileUrl: string): Promise<void> => {
   try {
     // Extract file ID from the URL
-    // URL format: https://fra.cloud.appwrite.io/v1/storage/buckets/BUCKET_ID/files/FILE_ID/download
+    // URL format: http://104.196.96.133/v1/storage/buckets/BUCKET_ID/files/FILE_ID/view?project=PROJECT_ID
     const urlParts = fileUrl.split('/');
     const fileIdIndex = urlParts.indexOf('files') + 1;
     
