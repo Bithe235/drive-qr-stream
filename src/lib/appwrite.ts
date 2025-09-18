@@ -1,22 +1,22 @@
 import { Client, Storage, Databases, ID, Permission, Role, Query, AppwriteException } from 'appwrite';
 import { QRCodeData } from './qrGenerator';
 
-// Primary Appwrite configuration - using environment variables
+// Primary Appwrite configuration from environment variables (formerly fallback)
 const PRIMARY_CONFIG = {
-  endpoint: import.meta.env.VITE_APPWRITE_ENDPOINT || 'http://34.23.98.230/v1',
-  projectId: import.meta.env.VITE_APPWRITE_PROJECT_ID || '68cb051f0013a0d8aa89',
-  databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID || '68cb06140031a586fe2b',
-  collectionId: import.meta.env.VITE_APPWRITE_COLLECTION_ID || '68cb061c00209aeffa1d',
-  bucketId: import.meta.env.VITE_APPWRITE_BUCKET_ID || '68cb057c002ca64682a2'
+  endpoint: import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1',
+  projectId: import.meta.env.VITE_APPWRITE_PROJECT_ID || '68ca9e8e000ddba95beb',
+  databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID || '68ca9f760003f35cf8ca',
+  collectionId: import.meta.env.VITE_APPWRITE_COLLECTION_ID || 'qrcode',
+  bucketId: import.meta.env.VITE_APPWRITE_BUCKET_ID || '68caacec001fd1ff6b9d'
 };
 
-// Fallback Appwrite configuration - using environment variables
+// Fallback Appwrite configuration from environment variables (formerly primary)
 const FALLBACK_CONFIG = {
-  endpoint: import.meta.env.VITE_APPWRITE_FALLBACK_ENDPOINT || 'https://fra.cloud.appwrite.io/v1',
-  projectId: import.meta.env.VITE_APPWRITE_FALLBACK_PROJECT_ID || '68ca9e8e000ddba95beb',
-  databaseId: import.meta.env.VITE_APPWRITE_FALLBACK_DATABASE_ID || '68ca9f760003f35cf8ca',
-  collectionId: import.meta.env.VITE_APPWRITE_FALLBACK_COLLECTION_ID || 'qrcode',
-  bucketId: import.meta.env.VITE_APPWRITE_FALLBACK_BUCKET_ID || '68caacec001fd1ff6b9d'
+  endpoint: import.meta.env.VITE_APPWRITE_FALLBACK_ENDPOINT || 'http://34.23.98.230/v1',
+  projectId: import.meta.env.VITE_APPWRITE_FALLBACK_PROJECT_ID || '68cb051f0013a0d8aa89',
+  databaseId: import.meta.env.VITE_APPWRITE_FALLBACK_DATABASE_ID || '68cb06140031a586fe2b',
+  collectionId: import.meta.env.VITE_APPWRITE_FALLBACK_COLLECTION_ID || '68cb061c00209aeffa1d',
+  bucketId: import.meta.env.VITE_APPWRITE_FALLBACK_BUCKET_ID || '68cb057c002ca64682a2'
 };
 
 // Create clients for both configurations
