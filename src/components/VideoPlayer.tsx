@@ -109,6 +109,10 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
     const handleIframeLoad = () => {
       console.log('Iframe loaded successfully');
       setIsLoading(false);
+      // Clear the load timer when iframe loads successfully
+      if (loadTimerRef.current) {
+        clearTimeout(loadTimerRef.current);
+      }
     };
 
     const iframe = iframeRef.current;
@@ -132,10 +136,12 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
     }, 30000); // 30 seconds default
 
     // Set a timeout to mark as loaded even if the load event doesn't fire
+    // Increased from 3 seconds to 10 seconds for slower connections
     loadTimerRef.current = setTimeout(() => {
-      console.log('Iframe load timeout reached');
+      console.log('Iframe load timeout reached - assuming loaded');
       setIsLoading(false);
-    }, 3000);
+      setError(null); // Clear any previous errors
+    }, 10000); // Increased from 3 seconds to 10 seconds
 
     // Cleanup function
     return () => {
@@ -234,14 +240,14 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
         console.log("Video loaded metadata");
       };
 
-      // Set a timeout to prevent indefinite loading
+      // Set a timeout to prevent indefinite loading - increased to 30 seconds
       loadTimeout = setTimeout(() => {
         if (isLoading) {
           console.warn("Video loading timeout - setting error state");
-          setError("Video took too long to load");
+          setError("Video took too long to load. Please check your connection or try a smaller video file.");
           setIsLoading(false);
         }
-      }, 10000); // 10 second timeout
+      }, 30000); // Increased from 10 seconds to 30 seconds
 
       // Add all event listeners
       video.addEventListener('ended', handleVideoEnd);
@@ -279,6 +285,37 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, []);
+
+  // Add network error detection
+  useEffect(() => {
+    const handleOnline = () => {
+      console.log('Network connection restored');
+      // If we were showing an error and now we're online, try to reload
+      if (error && (error.includes('too long') || error.includes('failed'))) {
+        setError(null);
+        setIsLoading(true);
+        if (videoRef.current) {
+          videoRef.current.load();
+        } else if (iframeRef.current) {
+          retryIframeLoad();
+        }
+      }
+    };
+
+    const handleOffline = () => {
+      console.log('Network connection lost');
+      setError("Network connection lost. Please check your internet connection.");
+      setIsLoading(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [error]);
 
   const toggleMute = () => {
     // Update condition to exclude iframe videos (Google Drive and Mega.nz)
@@ -331,6 +368,34 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
     }, 3000);
   };
 
+  // Add retry mechanism for iframe videos
+  const retryIframeLoad = () => {
+    if (isIframeVideo && iframeRef.current) {
+      console.log('Retrying iframe load');
+      setError(null);
+      setIsLoading(true);
+      
+      // Clear existing timeouts
+      if (loadTimerRef.current) {
+        clearTimeout(loadTimerRef.current);
+      }
+      
+      // Set new load timer
+      loadTimerRef.current = setTimeout(() => {
+        console.log('Iframe retry load timeout reached');
+        setIsLoading(false);
+        if (!error) {
+          setError("Video took too long to load. Please check your connection.");
+        }
+      }, 15000); // 15 second timeout for retry
+      
+      // Force reload by updating the src
+      if (iframeRef.current) {
+        iframeRef.current.src = processedUrl;
+      }
+    }
+  };
+
   return (
     <Card className={`glass-morphism shadow-card overflow-hidden ${isReelStyle ? 'border-0' : ''}`}>
       <div 
@@ -357,23 +422,40 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
             <div className="text-center p-4 bg-black/70 rounded-lg max-w-md">
               <div className="text-red-500 font-semibold mb-2">Video Error</div>
               <div className="text-white text-sm mb-4">{error}</div>
-              <div className="text-gray-300 text-xs">
+              <div className="text-gray-300 text-xs mb-3">
                 URL: {processedUrl.substring(0, 60)}{processedUrl.length > 60 ? '...' : ''}
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="mt-3 text-white border-white hover:bg-white hover:text-black"
-                onClick={() => {
-                  setError(null);
-                  setIsLoading(true);
-                  if (videoRef.current) {
-                    videoRef.current.load();
-                  }
-                }}
-              >
-                Retry
-              </Button>
+              <div className="flex gap-2 justify-center">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-white border-white hover:bg-white hover:text-black"
+                  onClick={() => {
+                    setError(null);
+                    setIsLoading(true);
+                    if (videoRef.current) {
+                      videoRef.current.load();
+                    } else if (iframeRef.current) {
+                      retryIframeLoad();
+                    }
+                  }}
+                >
+                  Retry
+                </Button>
+                {isIframeVideo && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-white border-white hover:bg-white hover:text-black"
+                    onClick={() => {
+                      // Open in new tab as fallback
+                      window.open(processedUrl, '_blank');
+                    }}
+                  >
+                    Open in New Tab
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         )}

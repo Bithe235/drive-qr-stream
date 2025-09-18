@@ -1,5 +1,5 @@
 import QRCode from 'qrcode';
-import { saveQRCodeToAppwrite, getQRCodesFromAppwrite, deleteQRCodeFromAppwrite, uploadVideo } from './appwrite';
+import { saveQRCodeToAppwrite, getQRCodesFromAppwrite, deleteQRCodeFromAppwrite, uploadVideo, compressVideo } from './appwrite';
 
 export interface QRCodeData {
   id: string;
@@ -37,10 +37,21 @@ export const generateQRCode = async (url: string, title: string): Promise<QRCode
 };
 
 // Function to upload a video file and generate a QR code for it
-export const uploadVideoAndGenerateQR = async (file: File, title: string): Promise<QRCodeData> => {
+export const uploadVideoAndGenerateQR = async (file: File, title: string, onProgress?: (stage: string, progress: number) => void): Promise<QRCodeData> => {
   try {
-    // Upload the video file
-    const videoUrl = await uploadVideo(file);
+    // First compress the video
+    if (onProgress) onProgress('compressing', 0);
+    
+    const compressedFile = await compressVideo(file, (progress) => {
+      if (onProgress) onProgress('compressing', progress);
+    });
+    
+    // Upload the video file with progress tracking
+    if (onProgress) onProgress('uploading', 0);
+    
+    const videoUrl = await uploadVideo(compressedFile, (progress) => {
+      if (onProgress) onProgress('uploading', progress);
+    });
     
     // Generate QR code for the video URL
     const qrData = await generateQRCode(videoUrl, title);

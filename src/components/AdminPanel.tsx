@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { generateQRCode, saveQRCode, getStoredQRCodes, deleteQRCode, downloadQRCode, QRCodeData, uploadVideoAndGenerateQR } from '@/lib/qrGenerator';
 import { QrCode, Upload, FileVideo, Download, Trash2 } from 'lucide-react';
@@ -17,6 +18,9 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
   const [title, setTitle] = useState('');
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [compressionProgress, setCompressionProgress] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [currentStage, setCurrentStage] = useState<'idle' | 'compressing' | 'uploading'>('idle');
   const [qrCodes, setQrCodes] = useState<QRCodeData[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -85,14 +89,34 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
     }
 
     setIsUploading(true);
+    setCompressionProgress(0);
+    setUploadProgress(0);
+    setCurrentStage('compressing');
+    
     try {
-      // Upload video and generate QR code
-      const qrData = await uploadVideoAndGenerateQR(videoFile, title);
+      // Upload video and generate QR code with progress tracking
+      const qrData = await uploadVideoAndGenerateQR(
+        videoFile, 
+        title, 
+        (stage, progress) => {
+          if (stage === 'compressing') {
+            setCompressionProgress(progress);
+            setCurrentStage('compressing');
+          } else if (stage === 'uploading') {
+            setUploadProgress(progress);
+            setCurrentStage('uploading');
+          }
+        }
+      );
+      
       await loadQRCodes();
       
       // Reset form
       setTitle('');
       setVideoFile(null);
+      setCompressionProgress(0);
+      setUploadProgress(0);
+      setCurrentStage('idle');
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -107,8 +131,10 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
         description: error.message || "Failed to upload video or generate QR code. Please try again.",
         variant: "destructive",
       });
+      setCurrentStage('idle');
+    } finally {
+      setIsUploading(false);
     }
-    setIsUploading(false);
   };
 
   const handleDelete = async (id: string, fileUrl?: string) => {
@@ -231,7 +257,12 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
               className="w-full"
               disabled={isUploading || !videoFile}
             >
-              {isUploading ? (
+              {currentStage === 'compressing' ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-foreground mr-2" />
+                  Compressing...
+                </>
+              ) : currentStage === 'uploading' ? (
                 <>
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-foreground mr-2" />
                   Uploading...
@@ -243,6 +274,32 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
                 </>
               )}
             </Button>
+            
+            {/* Progress bar for compression and upload */}
+            {isUploading && (
+              <div className="space-y-4">
+                {currentStage === 'compressing' && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Compressing video...</span>
+                      <span>{compressionProgress}%</span>
+                    </div>
+                    <Progress value={compressionProgress} className="w-full" />
+                  </div>
+                )}
+                
+                {currentStage === 'uploading' && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Uploading video...</span>
+                      <span>{uploadProgress}%</span>
+                    </div>
+                    <Progress value={uploadProgress} className="w-full" />
+                  </div>
+                )}
+              </div>
+            )}
+
           </CardContent>
         </Card>
 
