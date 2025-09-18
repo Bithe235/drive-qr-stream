@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { VideoPlayer } from './VideoPlayer';
-import { getStoredQRCodes, downloadQRCode, QRCodeData, generateQRCode } from '@/lib/qrGenerator';
+import { getStoredQRCodes, downloadQRCode, QRCodeData } from '@/lib/qrGenerator';
 import { QrCode, Download, Play, Video } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
@@ -14,12 +14,11 @@ interface UserPanelProps {
 export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
   const [qrCodes, setQrCodes] = useState<QRCodeData[]>([]);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
-  const [allReelsQR, setAllReelsQR] = useState<string>('');
+  // Removed allReelsQR state since we're using a static image
 
   useEffect(() => {
     loadQRCodes();
-    // Generate QR code for all reels
-    generateAllReelsQR();
+    // Removed generateAllReelsQR call since we're using a static image
   }, []);
 
   const loadQRCodes = async () => {
@@ -31,15 +30,7 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
     }
   };
 
-  const generateAllReelsQR = async () => {
-    try {
-      // Generate a QR code that links to the main page
-      const qrData = await generateQRCode(window.location.href, "All Reels");
-      setAllReelsQR(qrData.qrCodeDataUrl);
-    } catch (error) {
-      console.error("Failed to generate QR code for all reels:", error);
-    }
-  };
+  // Removed generateAllReelsQR function since we're using a static image
 
   const handleVideoEnd = () => {
     if (qrCodes.length > 1) {
@@ -95,15 +86,12 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
               </CardHeader>
               <CardContent className="text-center space-y-4">
                 <div className="p-6 bg-card rounded-2xl border border-border/30">
-                  {allReelsQR ? (
-                    <img 
-                      src={allReelsQR} 
-                      alt="All Videos QR Code"
-                      className="h-32 w-32 mx-auto mb-4 rounded-lg"
-                    />
-                  ) : (
-                    <QrCode className="h-32 w-32 mx-auto mb-4 text-primary" />
-                  )}
+                  {/* Use the static QR code image from public/qrfile folder */}
+                  <img 
+                    src="/qrfile/frame.png" 
+                    alt="All Videos QR Code"
+                    className="h-32 w-32 mx-auto mb-4 rounded-lg"
+                  />
                   <p className="text-sm text-muted-foreground">
                     Scan to access all video content
                   </p>
