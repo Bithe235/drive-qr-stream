@@ -4,23 +4,16 @@ import { QRCodeData } from './qrGenerator';
 // Appwrite configuration
 const client = new Client();
 
-// Configure client with environment variables
-// Check if we're in a browser environment
+// Use a local proxy for Vercel deployments to avoid SSL issues
+// Check if we're in a browser environment and on Vercel
 const isBrowser = typeof window !== 'undefined';
+const isVercel = isBrowser && window.location.hostname.includes('vercel.app');
 
-// Determine the appropriate endpoint based on environment
-let appwriteEndpoint = import.meta.env.VITE_APPWRITE_ENDPOINT || 'http://104.196.96.133/v1';
-
-// For Vercel deployments, we recommend using a proxy or valid SSL certificate
-// But we'll provide a fallback mechanism
-if (isBrowser && window.location.protocol === 'https:') {
-  // If the app is loaded over HTTPS, try to use HTTPS for Appwrite as well
-  // But allow override via environment variable
-  if (!import.meta.env.VITE_APPWRITE_ENDPOINT) {
-    // Default to HTTPS for HTTPS sites, but developers should set up proper SSL
-    appwriteEndpoint = 'https://104.196.96.133/v1';
-  }
-}
+// For Vercel deployments, use the local proxy endpoint
+// For local development, use direct connection
+const appwriteEndpoint = isVercel 
+  ? '/api/appwrite-proxy'  // Local proxy endpoint
+  : 'http://104.196.96.133/v1';  // Direct connection
 
 console.log('Appwrite endpoint:', appwriteEndpoint);
 
