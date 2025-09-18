@@ -5,9 +5,10 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { generateQRCode, saveQRCode, getStoredQRCodes, deleteQRCode, downloadQRCode, QRCodeData, uploadVideoAndGenerateQR } from '@/lib/qrGenerator';
-import { QrCode, Upload, FileVideo, Download, Trash2 } from 'lucide-react';
+import { QrCode, Upload, FileVideo, Download, Trash2, Server } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface AdminPanelProps {
@@ -22,6 +23,7 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [currentStage, setCurrentStage] = useState<'idle' | 'compressing' | 'uploading'>('idle');
   const [qrCodes, setQrCodes] = useState<QRCodeData[]>([]);
+  const [selectedServer, setSelectedServer] = useState<'primary' | 'fallback'>('primary');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -31,7 +33,7 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
 
   const loadQRCodes = async () => {
     try {
-      const codes = await getStoredQRCodes();
+      const codes = await getStoredQRCodes(selectedServer);
       setQrCodes(codes);
     } catch (error) {
       console.error('Error loading QR codes:', error);
@@ -106,7 +108,8 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
             setUploadProgress(progress);
             setCurrentStage('uploading');
           }
-        }
+        },
+        selectedServer // Pass the selected server
       );
       
       await loadQRCodes();
@@ -123,7 +126,7 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
       
       toast({
         title: "Video Uploaded & QR Generated",
-        description: "Video has been uploaded and QR code generated successfully",
+        description: `Video has been uploaded to ${selectedServer} server and QR code generated successfully`,
       });
     } catch (error: any) {
       toast({
@@ -139,11 +142,11 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
 
   const handleDelete = async (id: string, fileUrl?: string) => {
     try {
-      await deleteQRCode(id, fileUrl);
+      await deleteQRCode(id, fileUrl, selectedServer);
       await loadQRCodes();
       toast({
         title: "QR Code Deleted",
-        description: "QR code has been removed successfully",
+        description: `QR code has been removed from ${selectedServer} server successfully`,
       });
     } catch (error) {
       toast({
@@ -159,6 +162,15 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
     toast({
       title: "Download Started",
       description: "QR code image is being downloaded",
+    });
+  };
+
+  // Add server selection handler
+  const handleServerChange = (value: string) => {
+    setSelectedServer(value as 'primary' | 'fallback');
+    toast({
+      title: "Server Changed",
+      description: `Switched to ${value === 'primary' ? 'Primary' : 'Fallback'} server for testing.`,
     });
   };
 
@@ -183,6 +195,66 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
             </Button>
           </div>
         </div>
+
+        {/* Server Selection Card */}
+        <Card className="bg-card/80 backdrop-blur-lg border-border/50 shadow-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Server className="h-5 w-5" />
+              Server Configuration
+            </CardTitle>
+            <CardDescription>
+              Select which Appwrite server to use for testing
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Server className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">Current Server:</span>
+                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                  selectedServer === 'primary' 
+                    ? 'bg-green-500/20 text-green-700 dark:text-green-300' 
+                    : 'bg-blue-500/20 text-blue-700 dark:text-blue-300'
+                }`}>
+                  {selectedServer === 'primary' ? 'Primary' : 'Fallback'}
+                </span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Label htmlFor="server-select" className="text-sm font-medium">
+                  Test Server:
+                </Label>
+                <Select value={selectedServer} onValueChange={handleServerChange}>
+                  <SelectTrigger className="w-[180px]" id="server-select">
+                    <SelectValue placeholder="Select server" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="primary">Primary Server</SelectItem>
+                    <SelectItem value="fallback">Fallback Server</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="text-xs text-muted-foreground bg-muted/30 p-3 rounded-lg">
+              <p className="font-medium mb-1">Server Details:</p>
+              {selectedServer === 'primary' ? (
+                <div>
+                  <p>Endpoint: https://fra.cloud.appwrite.io/v1</p>
+                  <p>Project ID: 68ca9e8e000ddba95beb</p>
+                  <p>Bucket ID: 68caacec001fd1ff6b9d</p>
+                </div>
+              ) : (
+                <div>
+                  <p>Endpoint: https://fra.cloud.appwrite.io/v1</p>
+                  <p>Project ID: 68cb8e1d002e4fc95d7d</p>
+                  <p>Bucket ID: 68cb8e330019e02c056c</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Upload Video Card */}
         <Card className="bg-card/80 backdrop-blur-lg border-border/50 shadow-card">

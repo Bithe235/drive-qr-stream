@@ -37,7 +37,12 @@ export const generateQRCode = async (url: string, title: string): Promise<QRCode
 };
 
 // Function to upload a video file and generate a QR code for it
-export const uploadVideoAndGenerateQR = async (file: File, title: string, onProgress?: (stage: string, progress: number) => void): Promise<QRCodeData> => {
+export const uploadVideoAndGenerateQR = async (
+  file: File, 
+  title: string, 
+  onProgress?: (stage: string, progress: number) => void,
+  serverType: 'primary' | 'fallback' = 'primary'
+): Promise<QRCodeData> => {
   try {
     // First compress the video
     if (onProgress) onProgress('compressing', 0);
@@ -51,13 +56,13 @@ export const uploadVideoAndGenerateQR = async (file: File, title: string, onProg
     
     const videoUrl = await uploadVideo(compressedFile, (progress) => {
       if (onProgress) onProgress('uploading', progress);
-    });
+    }, serverType);
     
     // Generate QR code for the video URL
     const qrData = await generateQRCode(videoUrl, title);
     
     // Save QR code data to Appwrite
-    const savedQRData = await saveQRCodeToAppwrite(qrData);
+    const savedQRData = await saveQRCodeToAppwrite(qrData, serverType);
     
     return savedQRData;
   } catch (error: any) {
@@ -74,9 +79,9 @@ export const uploadVideoAndGenerateQR = async (file: File, title: string, onProg
   }
 };
 
-export const saveQRCode = async (qrData: QRCodeData): Promise<QRCodeData> => {
+export const saveQRCode = async (qrData: QRCodeData, serverType?: 'primary' | 'fallback'): Promise<QRCodeData> => {
   try {
-    const savedQRData = await saveQRCodeToAppwrite(qrData);
+    const savedQRData = await saveQRCodeToAppwrite(qrData, serverType);
     return savedQRData;
   } catch (error) {
     console.error('Error saving QR code to Appwrite:', error);
@@ -84,9 +89,9 @@ export const saveQRCode = async (qrData: QRCodeData): Promise<QRCodeData> => {
   }
 };
 
-export const getStoredQRCodes = async (): Promise<QRCodeData[]> => {
+export const getStoredQRCodes = async (serverType?: 'primary' | 'fallback'): Promise<QRCodeData[]> => {
   try {
-    const qrCodes = await getQRCodesFromAppwrite();
+    const qrCodes = await getQRCodesFromAppwrite(serverType);
     return qrCodes;
   } catch (error) {
     console.error('Error fetching QR codes from Appwrite:', error);
@@ -94,9 +99,9 @@ export const getStoredQRCodes = async (): Promise<QRCodeData[]> => {
   }
 };
 
-export const deleteQRCode = async (id: string, fileUrl?: string): Promise<void> => {
+export const deleteQRCode = async (id: string, fileUrl?: string, serverType?: 'primary' | 'fallback'): Promise<void> => {
   try {
-    await deleteQRCodeFromAppwrite(id, fileUrl);
+    await deleteQRCodeFromAppwrite(id, fileUrl, serverType);
   } catch (error) {
     console.error('Error deleting QR code from Appwrite:', error);
     throw error;
