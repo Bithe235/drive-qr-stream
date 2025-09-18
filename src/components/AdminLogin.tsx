@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { QrCode } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface AdminLoginProps {
   onLogin: (isAdmin: boolean) => void;
@@ -28,6 +29,9 @@ export const AdminLogin = ({ onLogin }: AdminLoginProps) => {
 
   return (
     <div className="min-h-screen bg-gradient-dark flex items-center justify-center p-4">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-md">
         <Card className="bg-card/80 backdrop-blur-lg border-border/50 shadow-card">
           <CardHeader className="text-center">

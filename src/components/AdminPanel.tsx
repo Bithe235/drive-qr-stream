@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/hooks/use-toast';
 import { generateQRCode, saveQRCode, getStoredQRCodes, deleteQRCode, downloadQRCode, QRCodeData, uploadVideoAndGenerateQR } from '@/lib/qrGenerator';
 import { QrCode, Upload, FileVideo, Download, Trash2 } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface AdminPanelProps {
   onLogout: () => void;
@@ -149,9 +150,12 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
               <p className="text-muted-foreground">Upload videos and generate QR codes</p>
             </div>
           </div>
-          <Button variant="outline" onClick={onLogout}>
-            Logout
-          </Button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button variant="outline" onClick={onLogout}>
+              Logout
+            </Button>
+          </div>
         </div>
 
         {/* Upload Video Card */}
