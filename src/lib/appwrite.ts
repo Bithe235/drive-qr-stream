@@ -82,7 +82,7 @@ export const uploadVideo = async (file: File): Promise<string> => {
     // Return the file URL - using the view URL for direct playback
     // This is more appropriate for embedding in video elements
     // Also add project parameter for proper authentication
-    return `${import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1'}/storage/buckets/${BUCKET_ID}/files/${response.$id}/view?project=${import.meta.env.VITE_APPWRITE_PROJECT_ID || '68ccc43b0039d53b4ccd'}`;
+    return `${import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1'}/storage/buckets/${BUCKET_ID}/files/${response.$id}/view?project=${import.meta.env.VITE_APPWRITE_PROJECT_ID || '68ca9e8e000ddba95beb'}`;
   } catch (error: any) {
     console.error('Error uploading video to primary Appwrite storage:', error);
     
@@ -162,7 +162,7 @@ export const uploadVideoWithProgress = async (file: File, onProgress: (progress:
     // Return the file URL - using the view URL for direct playback
     // This is more appropriate for embedding in video elements
     // Also add project parameter for proper authentication
-    return `${import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1'}/storage/buckets/${BUCKET_ID}/files/${response.$id}/view?project=${import.meta.env.VITE_APPWRITE_PROJECT_ID || '68ccc43b0039d53b4ccd'}`;
+    return `${import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1'}/storage/buckets/${BUCKET_ID}/files/${response.$id}/view?project=${import.meta.env.VITE_APPWRITE_PROJECT_ID || '68ca9e8e000ddba95beb'}`;
   } catch (error: any) {
     console.error('Error uploading video to primary Appwrite storage:', error);
     
@@ -195,7 +195,8 @@ export const uploadVideoWithProgress = async (file: File, onProgress: (progress:
 export const deleteVideoStorage = async (fileUrl: string): Promise<void> => {
   try {
     // Determine if this is a fallback storage URL or primary storage URL
-    const isFallbackUrl = fileUrl.includes(import.meta.env.VITE_APPWRITE_FALLBACK_PROJECT_ID || '68ca9e8e000ddba95beb');
+    // Check for the fallback project ID in the URL
+    const isFallbackUrl = fileUrl.includes(import.meta.env.VITE_APPWRITE_FALLBACK_PROJECT_ID || '68ccc43b0039d53b4ccd');
     
     if (isFallbackUrl) {
       // Delete from fallback storage

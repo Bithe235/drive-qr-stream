@@ -5,10 +5,10 @@ const fallbackClient = new Client();
 
 fallbackClient
   .setEndpoint(import.meta.env.VITE_APPWRITE_FALLBACK_ENDPOINT || 'https://fra.cloud.appwrite.io/v1')
-  .setProject(import.meta.env.VITE_APPWRITE_FALLBACK_PROJECT_ID || '68ca9e8e000ddba95beb');
+  .setProject(import.meta.env.VITE_APPWRITE_FALLBACK_PROJECT_ID || '68ccc43b0039d53b4ccd');
 
 const fallbackStorage = new Storage(fallbackClient);
-const FALLBACK_BUCKET_ID = import.meta.env.VITE_APPWRITE_FALLBACK_STORAGE_BUCKET_ID || '68caacec001fd1ff6b9d';
+const FALLBACK_BUCKET_ID = import.meta.env.VITE_APPWRITE_FALLBACK_STORAGE_BUCKET_ID || '68ccc46c001ef5e9ef03';
 
 // Function to upload a video file to fallback Appwrite storage
 export const uploadVideoToFallback = async (file: File): Promise<string> => {
@@ -34,7 +34,7 @@ export const uploadVideoToFallback = async (file: File): Promise<string> => {
     // Return the file URL - using the view URL for direct playback
     // This is more appropriate for embedding in video elements
     // Also add project parameter for proper authentication
-    return `${import.meta.env.VITE_APPWRITE_FALLBACK_ENDPOINT || 'https://fra.cloud.appwrite.io/v1'}/storage/buckets/${FALLBACK_BUCKET_ID}/files/${response.$id}/view?project=${import.meta.env.VITE_APPWRITE_FALLBACK_PROJECT_ID || '68ca9e8e000ddba95beb'}`;
+    return `${import.meta.env.VITE_APPWRITE_FALLBACK_ENDPOINT || 'https://fra.cloud.appwrite.io/v1'}/storage/buckets/${FALLBACK_BUCKET_ID}/files/${response.$id}/view?project=${import.meta.env.VITE_APPWRITE_FALLBACK_PROJECT_ID || '68ccc43b0039d53b4ccd'}`;
   } catch (error: any) {
     console.error('Error uploading video to fallback Appwrite storage:', error);
     
