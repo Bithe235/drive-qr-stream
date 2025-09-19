@@ -4,6 +4,9 @@ import { uploadVideoToFallback, deleteVideoFromFallback } from './appwriteFallba
 import { uploadVideoToSecondFallback, deleteVideoFromSecondFallback } from './appwriteSecondFallback';
 import { uploadVideoToThirdFallback, deleteVideoFromThirdFallback } from './appwriteThirdFallback';
 
+// Define storage server options
+export type StorageServer = 'primary' | 'fallback1' | 'fallback2' | 'fallback3';
+
 // Appwrite configuration
 const client = new Client();
 
@@ -67,8 +70,47 @@ export const initDatabase = async () => {
 };
 
 // Function to upload a video file to Appwrite storage with multi-level fallback
-export const uploadVideo = async (file: File): Promise<string> => {
+export const uploadVideo = async (file: File, storageServer?: StorageServer): Promise<string> => {
   try {
+    // If a specific storage server is selected for testing, use that server directly
+    if (storageServer) {
+      switch (storageServer) {
+        case 'fallback1':
+          console.log('Using first fallback storage for upload (testing mode)');
+          return await uploadVideoToFallback(file);
+        case 'fallback2':
+          console.log('Using second fallback storage for upload (testing mode)');
+          return await uploadVideoToSecondFallback(file);
+        case 'fallback3':
+          console.log('Using third fallback storage for upload (testing mode)');
+          return await uploadVideoToThirdFallback(file);
+        case 'primary':
+        default:
+          console.log('Using primary storage for upload (testing mode)');
+          // Check file size before upload (Appwrite default limit is often 60MB)
+          const MAX_FILE_SIZE = 60 * 1024 * 1024; // 60MB in bytes
+          if (file.size > MAX_FILE_SIZE) {
+            throw new Error(`File size exceeds limit. File is ${(file.size / (1024 * 1024)).toFixed(2)}MB, maximum allowed is 60MB. Please compress the video or contact administrator to increase limit.`);
+          }
+          
+          const response = await storage.createFile(
+            BUCKET_ID,
+            ID.unique(),
+            file,
+            // Add permissions to make the file publicly readable
+            [
+              Permission.read(Role.any())
+            ]
+          );
+          
+          // Return the file URL - using the view URL for direct playback
+          // This is more appropriate for embedding in video elements
+          // Also add project parameter for proper authentication
+          return `${import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1'}/storage/buckets/${BUCKET_ID}/files/${response.$id}/view?project=${import.meta.env.VITE_APPWRITE_PROJECT_ID || '68ca9e8e000ddba95beb'}`;
+      }
+    }
+    
+    // Normal fallback behavior when no specific server is selected
     // Check if primary storage is full
     const primaryFull = await isPrimaryStorageFull();
     
@@ -99,10 +141,10 @@ export const uploadVideo = async (file: File): Promise<string> => {
     // Try primary storage first
     console.log('Using primary storage for upload');
     
-    // Check file size before upload (Appwrite default limit is often 30MB)
-    const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30MB in bytes
+    // Check file size before upload (Appwrite default limit is often 60MB)
+    const MAX_FILE_SIZE = 60 * 1024 * 1024; // 60MB in bytes
     if (file.size > MAX_FILE_SIZE) {
-      throw new Error(`File size exceeds limit. File is ${(file.size / (1024 * 1024)).toFixed(2)}MB, maximum allowed is 30MB. Please compress the video or contact administrator to increase limit.`);
+      throw new Error(`File size exceeds limit. File is ${(file.size / (1024 * 1024)).toFixed(2)}MB, maximum allowed is 60MB. Please compress the video or contact administrator to increase limit.`);
     }
     
     const response = await storage.createFile(
@@ -120,11 +162,11 @@ export const uploadVideo = async (file: File): Promise<string> => {
     // Also add project parameter for proper authentication
     return `${import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1'}/storage/buckets/${BUCKET_ID}/files/${response.$id}/view?project=${import.meta.env.VITE_APPWRITE_PROJECT_ID || '68ca9e8e000ddba95beb'}`;
   } catch (error: any) {
-    console.error('Error uploading video to primary Appwrite storage:', error);
+    console.error('Error uploading video to Appwrite storage:', error);
     
     // If it's a storage limit error, try fallback storage
     if (error.message && (error.message.includes('limit') || error.message.includes('quota') || error.message.includes('storage'))) {
-      console.log('Primary storage limit reached, attempting first fallback storage');
+      console.log('Storage limit reached, attempting fallback storage');
       try {
         // Try first fallback
         return await uploadVideoToFallback(file);
@@ -169,8 +211,81 @@ export const uploadVideo = async (file: File): Promise<string> => {
 };
 
 // Function to upload a video file to Appwrite storage with progress tracking and multi-level fallback
-export const uploadVideoWithProgress = async (file: File, onProgress: (progress: number) => void): Promise<string> => {
+export const uploadVideoWithProgress = async (file: File, onProgress: (progress: number) => void, storageServer?: StorageServer): Promise<string> => {
   try {
+    // If a specific storage server is selected for testing, use that server directly
+    if (storageServer) {
+      switch (storageServer) {
+        case 'fallback1':
+          console.log('Using first fallback storage for upload with progress (testing mode)');
+          // Note: fallback storage doesn't currently support progress tracking in this implementation
+          onProgress(10); // Start progress
+          setTimeout(() => onProgress(50), 100); // Simulate progress
+          setTimeout(() => onProgress(90), 200); // Simulate progress
+          const fallback1Result = await uploadVideoToFallback(file);
+          onProgress(100); // Complete progress
+          return fallback1Result;
+        case 'fallback2':
+          console.log('Using second fallback storage for upload with progress (testing mode)');
+          // Note: fallback storage doesn't currently support progress tracking in this implementation
+          onProgress(10); // Start progress
+          setTimeout(() => onProgress(50), 100); // Simulate progress
+          setTimeout(() => onProgress(90), 200); // Simulate progress
+          const fallback2Result = await uploadVideoToSecondFallback(file);
+          onProgress(100); // Complete progress
+          return fallback2Result;
+        case 'fallback3':
+          console.log('Using third fallback storage for upload with progress (testing mode)');
+          // Note: fallback storage doesn't currently support progress tracking in this implementation
+          onProgress(10); // Start progress
+          setTimeout(() => onProgress(50), 100); // Simulate progress
+          setTimeout(() => onProgress(90), 200); // Simulate progress
+          const fallback3Result = await uploadVideoToThirdFallback(file);
+          onProgress(100); // Complete progress
+          return fallback3Result;
+        case 'primary':
+        default:
+          console.log('Using primary storage for upload with progress (testing mode)');
+          // Check file size before upload (Appwrite default limit is often 60MB)
+          const MAX_FILE_SIZE = 60 * 1024 * 1024; // 60MB in bytes
+          if (file.size > MAX_FILE_SIZE) {
+            throw new Error(`File size exceeds limit. File is ${(file.size / (1024 * 1024)).toFixed(2)}MB, maximum allowed is 60MB. Please compress the video or contact administrator to increase limit.`);
+          }
+          
+          // Create a custom upload function with progress tracking
+          // Note: Appwrite SDK doesn't directly support progress tracking, so we'll simulate it
+          console.log('Starting upload with progress tracking');
+          onProgress(10); // Start progress
+          
+          // Simulate progress during upload
+          let progress = 10;
+          const progressInterval = setInterval(() => {
+            // This is a simplified simulation - in a real implementation, we would track actual upload progress
+            progress = Math.min(progress + 5, 90);
+            onProgress(progress);
+          }, 300);
+          
+          const response = await storage.createFile(
+            BUCKET_ID,
+            ID.unique(),
+            file,
+            // Add permissions to make the file publicly readable
+            [
+              Permission.read(Role.any())
+            ]
+          );
+          
+          clearInterval(progressInterval);
+          onProgress(100); // Complete progress
+          
+          // Return the file URL - using the view URL for direct playback
+          // This is more appropriate for embedding in video elements
+          // Also add project parameter for proper authentication
+          return `${import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1'}/storage/buckets/${BUCKET_ID}/files/${response.$id}/view?project=${import.meta.env.VITE_APPWRITE_PROJECT_ID || '68ca9e8e000ddba95beb'}`;
+      }
+    }
+    
+    // Normal fallback behavior when no specific server is selected
     // Check if primary storage is full
     const primaryFull = await isPrimaryStorageFull();
     
@@ -219,10 +334,10 @@ export const uploadVideoWithProgress = async (file: File, onProgress: (progress:
     // Try primary storage first
     console.log('Using primary storage for upload with progress');
     
-    // Check file size before upload (Appwrite default limit is often 30MB)
-    const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30MB in bytes
+    // Check file size before upload (Appwrite default limit is often 60MB)
+    const MAX_FILE_SIZE = 60 * 1024 * 1024; // 60MB in bytes
     if (file.size > MAX_FILE_SIZE) {
-      throw new Error(`File size exceeds limit. File is ${(file.size / (1024 * 1024)).toFixed(2)}MB, maximum allowed is 30MB. Please compress the video or contact administrator to increase limit.`);
+      throw new Error(`File size exceeds limit. File is ${(file.size / (1024 * 1024)).toFixed(2)}MB, maximum allowed is 60MB. Please compress the video or contact administrator to increase limit.`);
     }
     
     // Create a custom upload function with progress tracking

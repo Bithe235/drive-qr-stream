@@ -4,11 +4,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { generateQRCode, saveQRCode, getStoredQRCodes, deleteQRCode, downloadQRCode, QRCodeData, uploadVideoAndGenerateQR } from '@/lib/qrGenerator';
-import { QrCode, Upload, FileVideo, Download, Trash2 } from 'lucide-react';
+import { QrCode, Upload, FileVideo, Download, Trash2, Server } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { compressVideoAdvanced, isCompressionSupported } from '@/lib/videoCompressorAdvanced';
+
+// Define storage server options
+type StorageServer = 'primary' | 'fallback1' | 'fallback2' | 'fallback3';
 
 interface AdminPanelProps {
   onLogout: () => void;
@@ -21,10 +25,14 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isCompressing, setIsCompressing] = useState(false);
   const [compressionInfo, setCompressionInfo] = useState<{ originalSize: number; compressedSize: number; ratio: number; time: number } | null>(null);
-  const [compressionSupported, setCompressionSupported] = useState(true); // Check if compression is supported
+  const [compressionSupported, setCompressionSupported] = useState(true);
   const [qrCodes, setQrCodes] = useState<QRCodeData[]>([]);
+  const [selectedStorageServer, setSelectedStorageServer] = useState<StorageServer>('primary');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  // Check if storage server selection feature is enabled
+  const isStorageServerSelectionEnabled = import.meta.env.VITE_ENABLE_STORAGE_SERVER_SELECTION === 'true';
 
   useEffect(() => {
     // Check if compression is supported
@@ -158,9 +166,15 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
       }
       
       // Upload video and generate QR code with progress tracking
-      const qrData = await uploadVideoAndGenerateQR(fileToUpload, title, (progress) => {
-        setUploadProgress(progress);
-      });
+      // Pass the selected storage server as an option only if the feature is enabled
+      const qrData = await uploadVideoAndGenerateQR(
+        fileToUpload, 
+        title, 
+        (progress) => {
+          setUploadProgress(progress);
+        }, 
+        isStorageServerSelectionEnabled ? selectedStorageServer : undefined
+      );
       await loadQRCodes();
       
       // Reset form
@@ -174,7 +188,9 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
       
       toast({
         title: "Video Uploaded & QR Generated",
-        description: "Video has been uploaded and QR code generated successfully",
+        description: isStorageServerSelectionEnabled 
+          ? `Video has been uploaded to ${selectedStorageServer} server and QR code generated successfully`
+          : "Video has been uploaded and QR code generated successfully",
       });
     } catch (error: any) {
       setUploadProgress(0);
@@ -212,6 +228,17 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
     });
   };
 
+  // Get server display name
+  const getServerDisplayName = (server: StorageServer) => {
+    switch (server) {
+      case 'primary': return 'Primary Server';
+      case 'fallback1': return 'First Fallback Server';
+      case 'fallback2': return 'Second Fallback Server';
+      case 'fallback3': return 'Third Fallback Server';
+      default: return 'Primary Server';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-dark p-4">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -233,6 +260,43 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
             </Button>
           </div>
         </div>
+
+        {/* Storage Server Selection Card - FOR TESTING ONLY */}
+        {isStorageServerSelectionEnabled && (
+          <Card className="bg-card/80 backdrop-blur-lg border-border/50 shadow-card border-yellow-500/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-yellow-500">
+                <Server className="h-5 w-5" />
+                Storage Server Selection (TESTING ONLY)
+              </CardTitle>
+              <CardDescription>
+                Select which storage server to use for uploads. This feature is for testing purposes only and should be removed in production.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <Label htmlFor="storageServer" className="w-32">Storage Server:</Label>
+                  <Select value={selectedStorageServer} onValueChange={(value: StorageServer) => setSelectedStorageServer(value)}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Select server" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="primary">Primary Server</SelectItem>
+                      <SelectItem value="fallback1">First Fallback Server</SelectItem>
+                      <SelectItem value="fallback2">Second Fallback Server</SelectItem>
+                      <SelectItem value="fallback3">Third Fallback Server</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  <p>Currently selected: <span className="font-medium">{getServerDisplayName(selectedStorageServer)}</span></p>
+                  <p className="mt-1 text-yellow-500">⚠️ This is a testing feature only. Remove before production deployment.</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Upload Video Card */}
         <Card className="bg-card/80 backdrop-blur-lg border-border/50 shadow-card">
@@ -327,7 +391,9 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
                   ></div>
                 </div>
                 <p className="text-center text-sm text-muted-foreground">
-                  Uploading... {uploadProgress}%
+                  {isStorageServerSelectionEnabled 
+                    ? `Uploading to ${getServerDisplayName(selectedStorageServer)}... ${uploadProgress}%`
+                    : `Uploading... ${uploadProgress}%`}
                 </p>
               </div>
             )}
@@ -347,7 +413,9 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
               ) : isUploading ? (
                 <>
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-foreground mr-2" />
-                  Uploading...
+                  {isStorageServerSelectionEnabled 
+                    ? `Uploading to ${getServerDisplayName(selectedStorageServer)}...`
+                    : 'Uploading...'}
                 </>
               ) : (
                 <>

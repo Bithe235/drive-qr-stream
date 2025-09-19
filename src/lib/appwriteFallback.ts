@@ -15,10 +15,10 @@ export const uploadVideoToFallback = async (file: File): Promise<string> => {
   try {
     console.log('Uploading to fallback storage...');
     
-    // Check file size before upload (Appwrite default limit is often 30MB)
-    const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30MB in bytes
+    // Check file size before upload (Appwrite default limit is often 60MB)
+    const MAX_FILE_SIZE = 60 * 1024 * 1024; // 60MB in bytes
     if (file.size > MAX_FILE_SIZE) {
-      throw new Error(`File size exceeds limit. File is ${(file.size / (1024 * 1024)).toFixed(2)}MB, maximum allowed is 30MB. Please compress the video or contact administrator to increase limit.`);
+      throw new Error(`File size exceeds limit. File is ${(file.size / (1024 * 1024)).toFixed(2)}MB, maximum allowed is 60MB. Please compress the video or contact administrator to increase limit.`);
     }
     
     const response = await fallbackStorage.createFile(
