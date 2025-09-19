@@ -1,6 +1,8 @@
 import { Client, Storage, Databases, ID, Permission, Role, Query } from 'appwrite';
 import { QRCodeData } from './qrGenerator';
 import { uploadVideoToFallback, deleteVideoFromFallback } from './appwriteFallback';
+import { uploadVideoToSecondFallback, deleteVideoFromSecondFallback } from './appwriteSecondFallback';
+import { uploadVideoToThirdFallback, deleteVideoFromThirdFallback } from './appwriteThirdFallback';
 
 // Appwrite configuration
 const client = new Client();
@@ -8,7 +10,7 @@ const client = new Client();
 // Configure client with environment variables
 client
   .setEndpoint(import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1')
-  .setProject(import.meta.env.VITE_APPWRITE_PROJECT_ID || '68ccc43b0039d53b4ccd');
+  .setProject(import.meta.env.VITE_APPWRITE_PROJECT_ID || '68ca9e8e000ddba95beb');
 
 const databases = new Databases(client);
 const storage = new Storage(client);
@@ -16,7 +18,7 @@ const storage = new Storage(client);
 // Database and collection IDs (always use primary server for database)
 const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID || '68ca9f760003f35cf8ca';
 const COLLECTION_ID = import.meta.env.VITE_APPWRITE_COLLECTION_ID || 'qrcode';
-const BUCKET_ID = import.meta.env.VITE_APPWRITE_STORAGE_BUCKET_ID || '68ccc46c001ef5e9ef03';
+const BUCKET_ID = import.meta.env.VITE_APPWRITE_STORAGE_BUCKET_ID || '68caacec001fd1ff6b9d';
 
 // Function to check if primary storage is full
 const isPrimaryStorageFull = async (): Promise<boolean> => {
@@ -37,6 +39,22 @@ const isPrimaryStorageFull = async (): Promise<boolean> => {
   }
 };
 
+// Function to check if first fallback storage is full
+const isFirstFallbackStorageFull = async (): Promise<boolean> => {
+  // This is a simplified check - in a real implementation, you might want to 
+  // actually test the fallback storage as well
+  // For now, we'll just return false to indicate it's available
+  return false;
+};
+
+// Function to check if second fallback storage is full
+const isSecondFallbackStorageFull = async (): Promise<boolean> => {
+  // This is a simplified check - in a real implementation, you might want to 
+  // actually test the fallback storage as well
+  // For now, we'll just return false to indicate it's available
+  return false;
+};
+
 // Function to initialize the database (if needed)
 export const initDatabase = async () => {
   try {
@@ -48,15 +66,33 @@ export const initDatabase = async () => {
   }
 };
 
-// Function to upload a video file to Appwrite storage with fallback
+// Function to upload a video file to Appwrite storage with multi-level fallback
 export const uploadVideo = async (file: File): Promise<string> => {
   try {
     // Check if primary storage is full
     const primaryFull = await isPrimaryStorageFull();
     
     if (primaryFull) {
-      // Use fallback storage
-      console.log('Using fallback storage for upload');
+      // Check if first fallback storage is also full
+      const firstFallbackFull = await isFirstFallbackStorageFull();
+      
+      if (firstFallbackFull) {
+        // Check if second fallback storage is also full
+        const secondFallbackFull = await isSecondFallbackStorageFull();
+        
+        if (secondFallbackFull) {
+          // Use third fallback storage
+          console.log('Using third fallback storage for upload');
+          return await uploadVideoToThirdFallback(file);
+        }
+        
+        // Use second fallback storage
+        console.log('Using second fallback storage for upload');
+        return await uploadVideoToSecondFallback(file);
+      }
+      
+      // Use first fallback storage
+      console.log('Using first fallback storage for upload');
       return await uploadVideoToFallback(file);
     }
     
@@ -88,11 +124,37 @@ export const uploadVideo = async (file: File): Promise<string> => {
     
     // If it's a storage limit error, try fallback storage
     if (error.message && (error.message.includes('limit') || error.message.includes('quota') || error.message.includes('storage'))) {
-      console.log('Primary storage limit reached, attempting fallback storage');
+      console.log('Primary storage limit reached, attempting first fallback storage');
       try {
+        // Try first fallback
         return await uploadVideoToFallback(file);
-      } catch (fallbackError) {
-        console.error('Error uploading to fallback storage:', fallbackError);
+      } catch (fallbackError: any) {
+        console.error('Error uploading to first fallback storage:', fallbackError);
+        
+        // If first fallback also fails with storage limit error, try second fallback
+        if (fallbackError.message && (fallbackError.message.includes('limit') || fallbackError.message.includes('quota') || fallbackError.message.includes('storage'))) {
+          console.log('First fallback storage limit reached, attempting second fallback storage');
+          try {
+            // Try second fallback
+            return await uploadVideoToSecondFallback(file);
+          } catch (secondFallbackError: any) {
+            console.error('Error uploading to second fallback storage:', secondFallbackError);
+            
+            // If second fallback also fails with storage limit error, try third fallback
+            if (secondFallbackError.message && (secondFallbackError.message.includes('limit') || secondFallbackError.message.includes('quota') || secondFallbackError.message.includes('storage'))) {
+              console.log('Second fallback storage limit reached, attempting third fallback storage');
+              try {
+                return await uploadVideoToThirdFallback(file);
+              } catch (thirdFallbackError) {
+                console.error('Error uploading to third fallback storage:', thirdFallbackError);
+                throw thirdFallbackError;
+              }
+            }
+            
+            throw secondFallbackError;
+          }
+        }
+        
         throw fallbackError;
       }
     }
@@ -106,15 +168,45 @@ export const uploadVideo = async (file: File): Promise<string> => {
   }
 };
 
-// Function to upload a video file to Appwrite storage with progress tracking and fallback
+// Function to upload a video file to Appwrite storage with progress tracking and multi-level fallback
 export const uploadVideoWithProgress = async (file: File, onProgress: (progress: number) => void): Promise<string> => {
   try {
     // Check if primary storage is full
     const primaryFull = await isPrimaryStorageFull();
     
     if (primaryFull) {
-      // Use fallback storage
-      console.log('Using fallback storage for upload with progress');
+      // Check if first fallback storage is also full
+      const firstFallbackFull = await isFirstFallbackStorageFull();
+      
+      if (firstFallbackFull) {
+        // Check if second fallback storage is also full
+        const secondFallbackFull = await isSecondFallbackStorageFull();
+        
+        if (secondFallbackFull) {
+          // Use third fallback storage
+          console.log('Using third fallback storage for upload with progress');
+          // Note: fallback storage doesn't currently support progress tracking in this implementation
+          onProgress(10); // Start progress
+          setTimeout(() => onProgress(50), 100); // Simulate progress
+          setTimeout(() => onProgress(90), 200); // Simulate progress
+          const result = await uploadVideoToThirdFallback(file);
+          onProgress(100); // Complete progress
+          return result;
+        }
+        
+        // Use second fallback storage
+        console.log('Using second fallback storage for upload with progress');
+        // Note: fallback storage doesn't currently support progress tracking in this implementation
+        onProgress(10); // Start progress
+        setTimeout(() => onProgress(50), 100); // Simulate progress
+        setTimeout(() => onProgress(90), 200); // Simulate progress
+        const result = await uploadVideoToSecondFallback(file);
+        onProgress(100); // Complete progress
+        return result;
+      }
+      
+      // Use first fallback storage
+      console.log('Using first fallback storage for upload with progress');
       // Note: fallback storage doesn't currently support progress tracking in this implementation
       onProgress(10); // Start progress
       setTimeout(() => onProgress(50), 100); // Simulate progress
@@ -168,7 +260,7 @@ export const uploadVideoWithProgress = async (file: File, onProgress: (progress:
     
     // If it's a storage limit error, try fallback storage
     if (error.message && (error.message.includes('limit') || error.message.includes('quota') || error.message.includes('storage'))) {
-      console.log('Primary storage limit reached, attempting fallback storage with progress');
+      console.log('Primary storage limit reached, attempting first fallback storage with progress');
       try {
         onProgress(10); // Start progress
         setTimeout(() => onProgress(50), 100); // Simulate progress
@@ -176,8 +268,42 @@ export const uploadVideoWithProgress = async (file: File, onProgress: (progress:
         const result = await uploadVideoToFallback(file);
         onProgress(100); // Complete progress
         return result;
-      } catch (fallbackError) {
-        console.error('Error uploading to fallback storage:', fallbackError);
+      } catch (fallbackError: any) {
+        console.error('Error uploading to first fallback storage:', fallbackError);
+        
+        // If first fallback also fails with storage limit error, try second fallback
+        if (fallbackError.message && (fallbackError.message.includes('limit') || fallbackError.message.includes('quota') || fallbackError.message.includes('storage'))) {
+          console.log('First fallback storage limit reached, attempting second fallback storage with progress');
+          try {
+            onProgress(10); // Start progress
+            setTimeout(() => onProgress(50), 100); // Simulate progress
+            setTimeout(() => onProgress(90), 200); // Simulate progress
+            const result = await uploadVideoToSecondFallback(file);
+            onProgress(100); // Complete progress
+            return result;
+          } catch (secondFallbackError: any) {
+            console.error('Error uploading to second fallback storage:', secondFallbackError);
+            
+            // If second fallback also fails with storage limit error, try third fallback
+            if (secondFallbackError.message && (secondFallbackError.message.includes('limit') || secondFallbackError.message.includes('quota') || secondFallbackError.message.includes('storage'))) {
+              console.log('Second fallback storage limit reached, attempting third fallback storage with progress');
+              try {
+                onProgress(10); // Start progress
+                setTimeout(() => onProgress(50), 100); // Simulate progress
+                setTimeout(() => onProgress(90), 200); // Simulate progress
+                const result = await uploadVideoToThirdFallback(file);
+                onProgress(100); // Complete progress
+                return result;
+              } catch (thirdFallbackError) {
+                console.error('Error uploading to third fallback storage:', thirdFallbackError);
+                throw thirdFallbackError;
+              }
+            }
+            
+            throw secondFallbackError;
+          }
+        }
+        
         throw fallbackError;
       }
     }
@@ -191,18 +317,28 @@ export const uploadVideoWithProgress = async (file: File, onProgress: (progress:
   }
 };
 
-// Function to delete a video file from Appwrite storage (handles both primary and fallback)
+// Function to delete a video file from Appwrite storage (handles all four storage levels)
 export const deleteVideoStorage = async (fileUrl: string): Promise<void> => {
   try {
-    // Determine if this is a fallback storage URL or primary storage URL
-    // Check for the fallback project ID in the URL
-    const isFallbackUrl = fileUrl.includes(import.meta.env.VITE_APPWRITE_FALLBACK_PROJECT_ID || '68ccc43b0039d53b4ccd');
+    // Determine which storage server the file is on by checking the project ID in the URL
+    const thirdFallbackProjectId = import.meta.env.VITE_APPWRITE_THIRD_FALLBACK_PROJECT_ID || '68ccc9900006d14e2952';
+    const secondFallbackProjectId = import.meta.env.VITE_APPWRITE_SECOND_FALLBACK_PROJECT_ID || '68ccc7cb003ae8c6d892';
+    const firstFallbackProjectId = import.meta.env.VITE_APPWRITE_FALLBACK_PROJECT_ID || '68ccc43b0039d53b4ccd';
+    const primaryProjectId = import.meta.env.VITE_APPWRITE_PROJECT_ID || '68ca9e8e000ddba95beb';
     
-    if (isFallbackUrl) {
-      // Delete from fallback storage
-      console.log('Deleting from fallback storage');
+    if (fileUrl.includes(thirdFallbackProjectId)) {
+      // Delete from third fallback storage
+      console.log('Deleting from third fallback storage');
+      await deleteVideoFromThirdFallback(fileUrl);
+    } else if (fileUrl.includes(secondFallbackProjectId)) {
+      // Delete from second fallback storage
+      console.log('Deleting from second fallback storage');
+      await deleteVideoFromSecondFallback(fileUrl);
+    } else if (fileUrl.includes(firstFallbackProjectId)) {
+      // Delete from first fallback storage
+      console.log('Deleting from first fallback storage');
       await deleteVideoFromFallback(fileUrl);
-    } else {
+    } else if (fileUrl.includes(primaryProjectId)) {
       // Delete from primary storage
       console.log('Deleting from primary storage');
       
@@ -220,6 +356,8 @@ export const deleteVideoStorage = async (fileUrl: string): Promise<void> => {
       } else {
         console.warn('Could not extract file ID from URL for deletion:', fileUrl);
       }
+    } else {
+      console.warn('Unknown storage server for file URL:', fileUrl);
     }
   } catch (error) {
     console.error('Error deleting video from Appwrite storage:', error);
