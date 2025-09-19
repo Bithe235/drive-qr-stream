@@ -2,7 +2,7 @@ import QRCode from 'qrcode';
 import { saveQRCodeToAppwrite, getQRCodesFromAppwrite, deleteQRCodeFromAppwrite, uploadVideoWithProgress } from './appwrite';
 
 // Define storage server options
-export type StorageServer = 'primary' | 'fallback1' | 'fallback2' | 'fallback3';
+export type StorageServer = 'primary' | 'fallback1' | 'fallback2' | 'fallback3' | 'fallback4' | 'fallback5' | 'fallback6';
 
 export interface QRCodeData {
   id: string;

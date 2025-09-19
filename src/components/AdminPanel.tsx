@@ -12,7 +12,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { compressVideoAdvanced, isCompressionSupported } from '@/lib/videoCompressorAdvanced';
 
 // Define storage server options
-type StorageServer = 'primary' | 'fallback1' | 'fallback2' | 'fallback3';
+type StorageServer = 'primary' | 'fallback1' | 'fallback2' | 'fallback3' | 'fallback4' | 'fallback5' | 'fallback6';
 
 interface AdminPanelProps {
   onLogout: () => void;
@@ -235,6 +235,9 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
       case 'fallback1': return 'First Fallback Server';
       case 'fallback2': return 'Second Fallback Server';
       case 'fallback3': return 'Third Fallback Server';
+      case 'fallback4': return 'Fourth Fallback Server';
+      case 'fallback5': return 'Fifth Fallback Server';
+      case 'fallback6': return 'Sixth Fallback Server';
       default: return 'Primary Server';
     }
   };
@@ -286,6 +289,9 @@ export const AdminPanel = ({ onLogout }: AdminPanelProps) => {
                       <SelectItem value="fallback1">First Fallback Server</SelectItem>
                       <SelectItem value="fallback2">Second Fallback Server</SelectItem>
                       <SelectItem value="fallback3">Third Fallback Server</SelectItem>
+                      <SelectItem value="fallback4">Fourth Fallback Server</SelectItem>
+                      <SelectItem value="fallback5">Fifth Fallback Server</SelectItem>
+                      <SelectItem value="fallback6">Sixth Fallback Server</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
