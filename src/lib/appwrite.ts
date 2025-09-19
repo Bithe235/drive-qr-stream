@@ -1,5 +1,6 @@
 import { Client, Storage, Databases, ID, Permission, Role, Query } from 'appwrite';
 import { QRCodeData } from './qrGenerator';
+import { uploadVideoToFallback, deleteVideoFromFallback } from './appwriteFallback';
 
 // Appwrite configuration
 const client = new Client();
@@ -7,15 +8,34 @@ const client = new Client();
 // Configure client with environment variables
 client
   .setEndpoint(import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1')
-  .setProject(import.meta.env.VITE_APPWRITE_PROJECT_ID || '68ca9e8e000ddba95beb');
+  .setProject(import.meta.env.VITE_APPWRITE_PROJECT_ID || '68ccc43b0039d53b4ccd');
 
 const databases = new Databases(client);
 const storage = new Storage(client);
 
-// Database and collection IDs
+// Database and collection IDs (always use primary server for database)
 const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID || '68ca9f760003f35cf8ca';
 const COLLECTION_ID = import.meta.env.VITE_APPWRITE_COLLECTION_ID || 'qrcode';
-const BUCKET_ID = import.meta.env.VITE_APPWRITE_STORAGE_BUCKET_ID || '68caacec001fd1ff6b9d';
+const BUCKET_ID = import.meta.env.VITE_APPWRITE_STORAGE_BUCKET_ID || '68ccc46c001ef5e9ef03';
+
+// Function to check if primary storage is full
+const isPrimaryStorageFull = async (): Promise<boolean> => {
+  try {
+    // Attempt to get bucket info to check usage
+    // If this fails with a storage limit error, we know we're full
+    await storage.listFiles(BUCKET_ID, []);
+    return false;
+  } catch (error: any) {
+    // Check if error indicates storage is full
+    if (error.message && (error.message.includes('limit') || error.message.includes('quota') || error.message.includes('storage'))) {
+      console.log('Primary storage appears to be full, will use fallback storage');
+      return true;
+    }
+    // For other errors, we assume storage is not full
+    console.log('Error checking storage status, assuming not full:', error.message);
+    return false;
+  }
+};
 
 // Function to initialize the database (if needed)
 export const initDatabase = async () => {
@@ -28,9 +48,21 @@ export const initDatabase = async () => {
   }
 };
 
-// Function to upload a video file to Appwrite storage
+// Function to upload a video file to Appwrite storage with fallback
 export const uploadVideo = async (file: File): Promise<string> => {
   try {
+    // Check if primary storage is full
+    const primaryFull = await isPrimaryStorageFull();
+    
+    if (primaryFull) {
+      // Use fallback storage
+      console.log('Using fallback storage for upload');
+      return await uploadVideoToFallback(file);
+    }
+    
+    // Try primary storage first
+    console.log('Using primary storage for upload');
+    
     // Check file size before upload (Appwrite default limit is often 30MB)
     const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30MB in bytes
     if (file.size > MAX_FILE_SIZE) {
@@ -50,9 +82,20 @@ export const uploadVideo = async (file: File): Promise<string> => {
     // Return the file URL - using the view URL for direct playback
     // This is more appropriate for embedding in video elements
     // Also add project parameter for proper authentication
-    return `${import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1'}/storage/buckets/${BUCKET_ID}/files/${response.$id}/view?project=${import.meta.env.VITE_APPWRITE_PROJECT_ID || '68ca9e8e000ddba95beb'}`;
+    return `${import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1'}/storage/buckets/${BUCKET_ID}/files/${response.$id}/view?project=${import.meta.env.VITE_APPWRITE_PROJECT_ID || '68ccc43b0039d53b4ccd'}`;
   } catch (error: any) {
-    console.error('Error uploading video to Appwrite:', error);
+    console.error('Error uploading video to primary Appwrite storage:', error);
+    
+    // If it's a storage limit error, try fallback storage
+    if (error.message && (error.message.includes('limit') || error.message.includes('quota') || error.message.includes('storage'))) {
+      console.log('Primary storage limit reached, attempting fallback storage');
+      try {
+        return await uploadVideoToFallback(file);
+      } catch (fallbackError) {
+        console.error('Error uploading to fallback storage:', fallbackError);
+        throw fallbackError;
+      }
+    }
     
     // Provide more specific error message for file size issues
     if (error.message && error.message.includes('size')) {
@@ -63,9 +106,27 @@ export const uploadVideo = async (file: File): Promise<string> => {
   }
 };
 
-// Function to upload a video file to Appwrite storage with progress tracking
+// Function to upload a video file to Appwrite storage with progress tracking and fallback
 export const uploadVideoWithProgress = async (file: File, onProgress: (progress: number) => void): Promise<string> => {
   try {
+    // Check if primary storage is full
+    const primaryFull = await isPrimaryStorageFull();
+    
+    if (primaryFull) {
+      // Use fallback storage
+      console.log('Using fallback storage for upload with progress');
+      // Note: fallback storage doesn't currently support progress tracking in this implementation
+      onProgress(10); // Start progress
+      setTimeout(() => onProgress(50), 100); // Simulate progress
+      setTimeout(() => onProgress(90), 200); // Simulate progress
+      const result = await uploadVideoToFallback(file);
+      onProgress(100); // Complete progress
+      return result;
+    }
+    
+    // Try primary storage first
+    console.log('Using primary storage for upload with progress');
+    
     // Check file size before upload (Appwrite default limit is often 30MB)
     const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30MB in bytes
     if (file.size > MAX_FILE_SIZE) {
@@ -101,9 +162,25 @@ export const uploadVideoWithProgress = async (file: File, onProgress: (progress:
     // Return the file URL - using the view URL for direct playback
     // This is more appropriate for embedding in video elements
     // Also add project parameter for proper authentication
-    return `${import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1'}/storage/buckets/${BUCKET_ID}/files/${response.$id}/view?project=${import.meta.env.VITE_APPWRITE_PROJECT_ID || '68ca9e8e000ddba95beb'}`;
+    return `${import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1'}/storage/buckets/${BUCKET_ID}/files/${response.$id}/view?project=${import.meta.env.VITE_APPWRITE_PROJECT_ID || '68ccc43b0039d53b4ccd'}`;
   } catch (error: any) {
-    console.error('Error uploading video to Appwrite:', error);
+    console.error('Error uploading video to primary Appwrite storage:', error);
+    
+    // If it's a storage limit error, try fallback storage
+    if (error.message && (error.message.includes('limit') || error.message.includes('quota') || error.message.includes('storage'))) {
+      console.log('Primary storage limit reached, attempting fallback storage with progress');
+      try {
+        onProgress(10); // Start progress
+        setTimeout(() => onProgress(50), 100); // Simulate progress
+        setTimeout(() => onProgress(90), 200); // Simulate progress
+        const result = await uploadVideoToFallback(file);
+        onProgress(100); // Complete progress
+        return result;
+      } catch (fallbackError) {
+        console.error('Error uploading to fallback storage:', fallbackError);
+        throw fallbackError;
+      }
+    }
     
     // Provide more specific error message for file size issues
     if (error.message && error.message.includes('size')) {
@@ -114,22 +191,34 @@ export const uploadVideoWithProgress = async (file: File, onProgress: (progress:
   }
 };
 
-// Function to delete a video file from Appwrite storage
+// Function to delete a video file from Appwrite storage (handles both primary and fallback)
 export const deleteVideoStorage = async (fileUrl: string): Promise<void> => {
   try {
-    // Extract file ID from the URL
-    // URL format: https://fra.cloud.appwrite.io/v1/storage/buckets/BUCKET_ID/files/FILE_ID/view?project=PROJECT_ID
-    const urlParts = fileUrl.split('/');
-    const fileIdIndex = urlParts.indexOf('files') + 1;
+    // Determine if this is a fallback storage URL or primary storage URL
+    const isFallbackUrl = fileUrl.includes(import.meta.env.VITE_APPWRITE_FALLBACK_PROJECT_ID || '68ca9e8e000ddba95beb');
     
-    if (fileIdIndex > 0 && fileIdIndex < urlParts.length) {
-      const fileId = urlParts[fileIdIndex];
-      
-      // Delete the file from storage
-      await storage.deleteFile(BUCKET_ID, fileId);
-      console.log(`Successfully deleted file ${fileId} from Appwrite storage`);
+    if (isFallbackUrl) {
+      // Delete from fallback storage
+      console.log('Deleting from fallback storage');
+      await deleteVideoFromFallback(fileUrl);
     } else {
-      console.warn('Could not extract file ID from URL for deletion:', fileUrl);
+      // Delete from primary storage
+      console.log('Deleting from primary storage');
+      
+      // Extract file ID from the URL
+      // URL format: https://fra.cloud.appwrite.io/v1/storage/buckets/BUCKET_ID/files/FILE_ID/view?project=PROJECT_ID
+      const urlParts = fileUrl.split('/');
+      const fileIdIndex = urlParts.indexOf('files') + 1;
+      
+      if (fileIdIndex > 0 && fileIdIndex < urlParts.length) {
+        const fileId = urlParts[fileIdIndex];
+        
+        // Delete the file from storage
+        await storage.deleteFile(BUCKET_ID, fileId);
+        console.log(`Successfully deleted file ${fileId} from Appwrite storage`);
+      } else {
+        console.warn('Could not extract file ID from URL for deletion:', fileUrl);
+      }
     }
   } catch (error) {
     console.error('Error deleting video from Appwrite storage:', error);
@@ -137,7 +226,7 @@ export const deleteVideoStorage = async (fileUrl: string): Promise<void> => {
   }
 };
 
-// Function to save a QR code to Appwrite
+// Function to save a QR code to Appwrite (always use primary server for database)
 export const saveQRCodeToAppwrite = async (qrData: QRCodeData): Promise<QRCodeData> => {
   try {
     // Create a minimal data object with only the most essential fields
@@ -209,7 +298,7 @@ export const saveQRCodeToAppwrite = async (qrData: QRCodeData): Promise<QRCodeDa
   }
 };
 
-// Function to get all QR codes from Appwrite
+// Function to get all QR codes from Appwrite (always use primary server for database)
 export const getQRCodesFromAppwrite = async (): Promise<QRCodeData[]> => {
   try {
     const response = await databases.listDocuments(
@@ -232,7 +321,7 @@ export const getQRCodesFromAppwrite = async (): Promise<QRCodeData[]> => {
   }
 };
 
-// Function to delete a QR code from Appwrite
+// Function to delete a QR code from Appwrite (always use primary server for database)
 export const deleteQRCodeFromAppwrite = async (id: string, fileUrl?: string): Promise<void> => {
   try {
     // If it's a video file, delete it from storage first
@@ -240,7 +329,7 @@ export const deleteQRCodeFromAppwrite = async (id: string, fileUrl?: string): Pr
       await deleteVideoStorage(fileUrl);
     }
     
-    // Delete the document from the database
+    // Delete the document from the database (always use primary)
     await databases.deleteDocument(
       DATABASE_ID,
       COLLECTION_ID,
