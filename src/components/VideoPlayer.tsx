@@ -13,33 +13,63 @@ export const transformAppwriteUrlForPlayback = (url: string): string => {
     return url;
   }
   
+  // Extract project ID from the URL if present
+  let projectId = '68ca9e8e000ddba95beb'; // Default project ID
+  
+  // Try to extract project ID from URL parameters
+  try {
+    const urlObj1 = new URL(url, window.location.origin);
+    if (urlObj1.searchParams.has('project')) {
+      projectId = urlObj1.searchParams.get('project') || projectId;
+    }
+  } catch (e) {
+    // If URL parsing fails, use default project ID
+    console.warn('Failed to parse URL for project ID:', url);
+  }
+  
   // If it's a download URL, transform it to view URL with project parameter
   if (url.includes('/download')) {
-    // Replace /download with /view and add project parameter
-    const viewUrl = url.replace('/download', '/view');
-    const projectParam = `project=68cb051f0013a0d8aa89`;
+    // Replace /download with /view and ensure project parameter
+    let viewUrl = url.replace('/download', '/view');
     
-    // Add project parameter
-    if (viewUrl.includes('?')) {
-      return `${viewUrl}&${projectParam}`;
-    } else {
-      return `${viewUrl}?${projectParam}`;
+    // Add or update project parameter
+    try {
+      const urlObj2 = new URL(viewUrl, window.location.origin);
+      urlObj2.searchParams.set('project', projectId);
+      return urlObj2.toString();
+    } catch (e) {
+      // If URL parsing fails, append project parameter manually
+      return viewUrl.includes('?') 
+        ? `${viewUrl}&project=${projectId}` 
+        : `${viewUrl}?project=${projectId}`;
     }
   }
   
   // If it's a view URL but missing project parameter, add it
-  if (url.includes('/view') && !url.includes('project=')) {
-    const projectParam = `project=68cb051f0013a0d8aa89`;
-    
-    if (url.includes('?')) {
-      return `${url}&${projectParam}`;
-    } else {
-      return `${url}?${projectParam}`;
+  if (url.includes('/view')) {
+    try {
+      const urlObj3 = new URL(url, window.location.origin);
+      urlObj3.searchParams.set('project', projectId);
+      return urlObj3.toString();
+    } catch (e) {
+      // If URL parsing fails, append project parameter manually
+      return url.includes('?') 
+        ? `${url}&project=${projectId}` 
+        : `${url}?project=${projectId}`;
     }
   }
   
-  // Return URL as-is if no transformation needed
-  return url;
+  // For other URLs, ensure they have the project parameter
+  try {
+    const urlObj4 = new URL(url, window.location.origin);
+    urlObj4.searchParams.set('project', projectId);
+    return urlObj4.toString();
+  } catch (e) {
+    // If URL parsing fails, append project parameter manually
+    return url.includes('?') 
+      ? `${url}&project=${projectId}` 
+      : `${url}?project=${projectId}`;
+  }
 };
 
 interface VideoPlayerProps {
@@ -155,17 +185,18 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
     }
 
     // Set a timeout to simulate video end (since we can't detect iframe video end directly)
-    // Using a more reasonable default of 30 seconds for video duration
+    // Using a more reasonable default of 60 seconds for video duration
     timeoutRef.current = setTimeout(() => {
       console.log("Iframe video timeout reached, triggering next video");
       onVideoEnd();
-    }, 30000); // 30 seconds default
+    }, 60000); // 60 seconds default (increased from 30 seconds)
 
     // Set a timeout to mark as loaded even if the load event doesn't fire
+    // Increased from 3 seconds to 10 seconds for slower connections
     loadTimerRef.current = setTimeout(() => {
       console.log('Iframe load timeout reached');
       setIsLoading(false);
-    }, 3000);
+    }, 10000); // 10 seconds (increased from 3 seconds)
 
     // Cleanup function
     return () => {
@@ -188,6 +219,8 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
 
     const video = videoRef.current;
     let loadTimeout: NodeJS.Timeout;
+    let retryCount = 0;
+    const maxRetries = 2;
     
     if (video) {
       const handleVideoEnd = () => {
@@ -236,26 +269,31 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
           clearTimeout(loadTimeout);
         }
         
-        // Set error state
-        setError(`Video failed to load: ${e.target?.error?.message || 'Unknown error'}`);
-        setIsLoading(false);
-        
-        // Try to reload the video once
-        if (e.target?.error?.code === e.target?.error?.MEDIA_ERR_NETWORK) {
-          console.log("Attempting to reload video due to network error");
-          // Reset loading state and try again
+        // Try to reload the video if we haven't exceeded max retries
+        if (retryCount < maxRetries) {
+          retryCount++;
+          console.log(`Attempting to reload video (attempt ${retryCount}/${maxRetries})`);
+          setError(`Video loading failed, retrying... (${retryCount}/${maxRetries})`);
+          
+          // Reset loading state and try again after a short delay
           setTimeout(() => {
             if (videoRef.current) {
               videoRef.current.load();
             }
-          }, 1000);
+          }, 1500);
+          return;
         }
+        
+        // Set error state after max retries
+        const errorMessage = e.target?.error?.message || 'Unknown error';
+        setError(`Video failed to load after ${maxRetries} attempts: ${errorMessage}`);
+        setIsLoading(false);
       };
 
       const handleLoadStart = () => {
         console.log("Video load start");
         // Only set loading if we're not already in an error state
-        if (!error) {
+        if (!error || retryCount > 0) {
           setIsLoading(true);
         }
       };
@@ -264,14 +302,22 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
         console.log("Video loaded metadata");
       };
 
-      // Set a timeout to prevent indefinite loading
+      const handleStalled = () => {
+        console.log("Video stalled");
+      };
+
+      const handleWaiting = () => {
+        console.log("Video waiting for data");
+      };
+
+      // Set a longer timeout to prevent indefinite loading (increased from 10s to 30s)
       loadTimeout = setTimeout(() => {
         if (isLoading) {
           console.warn("Video loading timeout - setting error state");
-          setError("Video took too long to load");
+          setError("Video took too long to load (30 second timeout). This may be due to a slow network connection or a large file size.");
           setIsLoading(false);
         }
-      }, 10000); // 10 second timeout
+      }, 30000); // 30 second timeout (increased from 10 seconds)
 
       // Add all event listeners
       video.addEventListener('ended', handleVideoEnd);
@@ -281,6 +327,8 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
       video.addEventListener('error', handleError);
       video.addEventListener('loadstart', handleLoadStart);
       video.addEventListener('loadedmetadata', handleLoadedMetadata);
+      video.addEventListener('stalled', handleStalled);
+      video.addEventListener('waiting', handleWaiting);
 
       // Cleanup
       return () => {
@@ -291,6 +339,8 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
         video.removeEventListener('error', handleError);
         video.removeEventListener('loadstart', handleLoadStart);
         video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+        video.removeEventListener('stalled', handleStalled);
+        video.removeEventListener('waiting', handleWaiting);
         if (loadTimeout) {
           clearTimeout(loadTimeout);
         }
@@ -391,8 +441,14 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
             <div className="text-center p-4 bg-black/70 rounded-lg max-w-md">
               <div className="text-red-500 font-semibold mb-2">Video Error</div>
               <div className="text-white text-sm mb-4">{error}</div>
-              <div className="text-gray-300 text-xs">
+              <div className="text-gray-300 text-xs mb-3">
                 URL: {processedUrl.substring(0, 60)}{processedUrl.length > 60 ? '...' : ''}
+              </div>
+              <div className="text-gray-400 text-xs mb-4">
+                {isAppwriteVideo 
+                  ? "This may be due to a slow network connection, a large file size, or temporary server issues."
+                  : "This may be due to network issues or the video source being unavailable."
+                }
               </div>
               <Button 
                 variant="outline" 
