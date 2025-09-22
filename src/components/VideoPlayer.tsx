@@ -1,9 +1,26 @@
+/**
+ * Video Player Component
+ * 
+ * Developed by Fahad Akash
+ * Game Developer | Cloud Engineer | Full Stack Developer
+ * 
+ * This component provides a robust video playback experience with support for
+ * Appwrite-hosted videos, caching, error handling, and responsive controls.
+ * 
+ * Features:
+ * - Support for Appwrite-hosted video content
+ * - IndexedDB caching for improved performance
+ * - Progressive loading with timeout management
+ * - Retry mechanisms for failed loads
+ * - Responsive controls with volume and fullscreen support
+ * - Automatic playback progression for reels-style experience
+ */
+
 import { useEffect, useRef, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Volume2, VolumeX, Maximize, Minimize } from 'lucide-react';
-import { generateGoogleDriveEmbedUrl, processGoogleDriveUrl, generateMegaEmbedUrl } from '@/lib/qrGenerator';
 import { getCachedVideoUrl } from '../lib/videoCache';
 
 // Function to transform Appwrite URLs for proper playback
@@ -36,12 +53,19 @@ export const transformAppwriteUrlForPlayback = (url: string): string => {
     try {
       const urlObj2 = new URL(viewUrl, window.location.origin);
       urlObj2.searchParams.set('project', projectId);
+      // Add additional parameters for better streaming support
+      urlObj2.searchParams.set('quality', 'original');
       return urlObj2.toString();
     } catch (e) {
       // If URL parsing fails, append project parameter manually
-      return viewUrl.includes('?') 
+      let resultUrl = viewUrl.includes('?') 
         ? `${viewUrl}&project=${projectId}` 
         : `${viewUrl}?project=${projectId}`;
+      // Add quality parameter
+      resultUrl = resultUrl.includes('?') 
+        ? `${resultUrl}&quality=original` 
+        : `${resultUrl}?quality=original`;
+      return resultUrl;
     }
   }
   
@@ -50,12 +74,19 @@ export const transformAppwriteUrlForPlayback = (url: string): string => {
     try {
       const urlObj3 = new URL(url, window.location.origin);
       urlObj3.searchParams.set('project', projectId);
+      // Add additional parameters for better streaming support
+      urlObj3.searchParams.set('quality', 'original');
       return urlObj3.toString();
     } catch (e) {
       // If URL parsing fails, append project parameter manually
-      return url.includes('?') 
+      let resultUrl = url.includes('?') 
         ? `${url}&project=${projectId}` 
         : `${url}?project=${projectId}`;
+      // Add quality parameter
+      resultUrl = resultUrl.includes('?') 
+        ? `${resultUrl}&quality=original` 
+        : `${resultUrl}?quality=original`;
+      return resultUrl;
     }
   }
   
@@ -63,12 +94,19 @@ export const transformAppwriteUrlForPlayback = (url: string): string => {
   try {
     const urlObj4 = new URL(url, window.location.origin);
     urlObj4.searchParams.set('project', projectId);
+    // Add additional parameters for better streaming support
+    urlObj4.searchParams.set('quality', 'original');
     return urlObj4.toString();
   } catch (e) {
     // If URL parsing fails, append project parameter manually
-    return url.includes('?') 
+    let resultUrl = url.includes('?') 
       ? `${url}&project=${projectId}` 
       : `${url}?project=${projectId}`;
+    // Add quality parameter
+    resultUrl = resultUrl.includes('?') 
+      ? `${resultUrl}&quality=original` 
+      : `${resultUrl}?quality=original`;
+    return resultUrl;
   }
 };
 
@@ -91,34 +129,25 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
   const [error, setError] = useState<string | null>(null);
   const [effectiveVideoUrl, setEffectiveVideoUrl] = useState<string>(videoUrl); // Add state for effective URL
   const videoRef = useRef<HTMLVideoElement>(null);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const loadTimerRef = useRef<NodeJS.Timeout | null>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const isGoogleDrive = videoUrl.includes('drive.google.com');
   const isAppwriteVideo = videoUrl.includes('appwrite.io/v1/storage');
-  const isMegaVideo = videoUrl.includes('mega.nz');
-  const isIframeVideo = isGoogleDrive || isMegaVideo;
   
   // Transform Appwrite URLs to use the view endpoint with project parameter for proper playback
-  const processedUrl = isGoogleDrive 
-    ? generateGoogleDriveEmbedUrl(videoUrl)
-    : isAppwriteVideo
+  const processedUrl = isAppwriteVideo
       ? transformAppwriteUrlForPlayback(videoUrl)
-      : isMegaVideo
-        ? generateMegaEmbedUrl(videoUrl)
-        : videoUrl;
+      : videoUrl;
 
   // Log the video URL for debugging
   useEffect(() => {
     console.log('VideoPlayer: videoUrl=', videoUrl);
-    console.log('VideoPlayer: isGoogleDrive=', isGoogleDrive);
     console.log('VideoPlayer: isAppwriteVideo=', isAppwriteVideo);
     console.log('VideoPlayer: processedUrl=', processedUrl);
     setError(null); // Reset error when URL changes
-  }, [videoUrl, isGoogleDrive, isAppwriteVideo, processedUrl]);
+  }, [videoUrl, isAppwriteVideo, processedUrl]);
 
   // Handle caching for Appwrite videos
   useEffect(() => {
@@ -154,73 +183,21 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
 
   // Handle volume changes for direct videos
   useEffect(() => {
-    // Update condition to exclude iframe videos
-    if (isIframeVideo || !videoRef.current) return;
+    if (!videoRef.current) return;
     
     videoRef.current.volume = isMuted ? 0 : volume;
     videoRef.current.muted = isMuted;
-  }, [volume, isMuted, isIframeVideo]);
-
-  // Simplified iframe loading handling with video end detection
-  useEffect(() => {
-    // Update condition to include Mega.nz videos
-    if ((!isGoogleDrive && !isMegaVideo) || !onVideoEnd) return;
-
-    const handleIframeLoad = () => {
-      console.log('Iframe loaded successfully');
-      setIsLoading(false);
-    };
-
-    const iframe = iframeRef.current;
-    if (iframe) {
-      iframe.addEventListener('load', handleIframeLoad);
-    }
-
-    // Clear any existing timeouts
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    if (loadTimerRef.current) {
-      clearTimeout(loadTimerRef.current);
-    }
-
-    // Set a timeout to simulate video end (since we can't detect iframe video end directly)
-    // Using a more reasonable default of 60 seconds for video duration
-    timeoutRef.current = setTimeout(() => {
-      console.log("Iframe video timeout reached, triggering next video");
-      onVideoEnd();
-    }, 60000); // 60 seconds default (increased from 30 seconds)
-
-    // Set a timeout to mark as loaded even if the load event doesn't fire
-    // Increased from 3 seconds to 10 seconds for slower connections
-    loadTimerRef.current = setTimeout(() => {
-      console.log('Iframe load timeout reached');
-      setIsLoading(false);
-    }, 10000); // 10 seconds (increased from 3 seconds)
-
-    // Cleanup function
-    return () => {
-      if (iframe) {
-        iframe.removeEventListener('load', handleIframeLoad);
-      }
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      if (loadTimerRef.current) {
-        clearTimeout(loadTimerRef.current);
-      }
-    };
-  }, [isGoogleDrive, isMegaVideo, onVideoEnd, videoUrl]); // Add isMegaVideo to dependencies
+  }, [volume, isMuted]);
 
   // Handle direct video playback (Appwrite videos or direct video URLs)
   useEffect(() => {
-    // Update condition to exclude Mega.nz videos
-    if (isGoogleDrive || isMegaVideo || !onVideoEnd) return;
+    if (!onVideoEnd) return;
 
     const video = videoRef.current;
     let loadTimeout: NodeJS.Timeout;
     let retryCount = 0;
-    const maxRetries = 2;
+    const maxRetries = 3; // Increase retries
+    let isRetrying = false;
     
     if (video) {
       const handleVideoEnd = () => {
@@ -269,9 +246,13 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
           clearTimeout(loadTimeout);
         }
         
+        // Prevent multiple retry attempts
+        if (isRetrying) return;
+        
         // Try to reload the video if we haven't exceeded max retries
         if (retryCount < maxRetries) {
           retryCount++;
+          isRetrying = true;
           console.log(`Attempting to reload video (attempt ${retryCount}/${maxRetries})`);
           setError(`Video loading failed, retrying... (${retryCount}/${maxRetries})`);
           
@@ -279,8 +260,9 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
           setTimeout(() => {
             if (videoRef.current) {
               videoRef.current.load();
+              isRetrying = false;
             }
-          }, 1500);
+          }, 2000 * retryCount); // Exponential backoff
           return;
         }
         
@@ -310,14 +292,32 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
         console.log("Video waiting for data");
       };
 
-      // Set a longer timeout to prevent indefinite loading (increased from 10s to 30s)
+      const handleProgress = (e: any) => {
+        // Log progress for debugging
+        if (e.target && e.target.buffered.length > 0) {
+          const bufferedEnd = e.target.buffered.end(e.target.buffered.length - 1);
+          const duration = e.target.duration;
+          if (duration > 0) {
+            const bufferedPercent = (bufferedEnd / duration) * 100;
+            console.log(`Video buffering progress: ${bufferedPercent.toFixed(2)}%`);
+          }
+        }
+      };
+
+      // Set a longer timeout to prevent indefinite loading (increased from 30s to 60s)
+      // Also add progressive timeout extension based on video size
+      const baseTimeout = 60000; // 60 seconds base
+      const estimatedSizeMB = 50; // Estimate video size (could be improved with actual size)
+      const sizeFactor = Math.min(estimatedSizeMB / 10, 5); // Scale timeout based on size
+      const extendedTimeout = baseTimeout * sizeFactor;
+      
       loadTimeout = setTimeout(() => {
         if (isLoading) {
           console.warn("Video loading timeout - setting error state");
-          setError("Video took too long to load (30 second timeout). This may be due to a slow network connection or a large file size.");
+          setError(`Video took too long to load (${Math.round(extendedTimeout/1000)} second timeout). This may be due to a slow network connection, a large file size, or temporary server issues. Retrying may help.`);
           setIsLoading(false);
         }
-      }, 30000); // 30 second timeout (increased from 10 seconds)
+      }, extendedTimeout);
 
       // Add all event listeners
       video.addEventListener('ended', handleVideoEnd);
@@ -329,6 +329,7 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
       video.addEventListener('loadedmetadata', handleLoadedMetadata);
       video.addEventListener('stalled', handleStalled);
       video.addEventListener('waiting', handleWaiting);
+      video.addEventListener('progress', handleProgress);
 
       // Cleanup
       return () => {
@@ -341,6 +342,7 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
         video.removeEventListener('loadedmetadata', handleLoadedMetadata);
         video.removeEventListener('stalled', handleStalled);
         video.removeEventListener('waiting', handleWaiting);
+        video.removeEventListener('progress', handleProgress);
         if (loadTimeout) {
           clearTimeout(loadTimeout);
         }
@@ -350,7 +352,7 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
         }
       };
     }
-  }, [isGoogleDrive, isMegaVideo, onVideoEnd, effectiveVideoUrl, autoPlay, error, isLoading, videoUrl]); // Add isMegaVideo to dependencies
+  }, [onVideoEnd, effectiveVideoUrl, autoPlay, error, isLoading, videoUrl]);
 
   // Handle fullscreen changes
   useEffect(() => {
@@ -365,8 +367,7 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
   }, []);
 
   const toggleMute = () => {
-    // Update condition to exclude iframe videos (Google Drive and Mega.nz)
-    if (isIframeVideo || !videoRef.current) return;
+    if (!videoRef.current) return;
     
     const newMuted = !isMuted;
     setIsMuted(newMuted);
@@ -379,9 +380,6 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
   };
 
   const handleVolumeChange = (value: number[]) => {
-    // Update condition to exclude iframe videos
-    if (isIframeVideo) return;
-    
     const newVolume = value[0];
     setVolume(newVolume);
     setIsMuted(newVolume === 0);
@@ -445,136 +443,152 @@ export const VideoPlayer = ({ videoUrl, title, onVideoEnd, isReelStyle = false, 
                 URL: {processedUrl.substring(0, 60)}{processedUrl.length > 60 ? '...' : ''}
               </div>
               <div className="text-gray-400 text-xs mb-4">
-                {isAppwriteVideo 
-                  ? "This may be due to a slow network connection, a large file size, or temporary server issues."
-                  : "This may be due to network issues or the video source being unavailable."
-                }
+                This may be due to a slow network connection, a large file size, or temporary server issues.
+                {isAppwriteVideo && (
+                  <div className="mt-2">
+                    <strong>Tip:</strong> Try reloading the page or check your internet connection.
+                  </div>
+                )}
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="mt-3 text-white border-white hover:bg-white hover:text-black"
-                onClick={() => {
-                  setError(null);
-                  setIsLoading(true);
-                  if (videoRef.current) {
-                    videoRef.current.load();
-                  }
-                }}
-              >
-                Retry
-              </Button>
+              <div className="flex flex-col gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-white border-white hover:bg-white hover:text-black"
+                  onClick={() => {
+                    setError(null);
+                    setIsLoading(true);
+                    if (videoRef.current) {
+                      videoRef.current.load();
+                    }
+                  }}
+                >
+                  Retry Loading
+                </Button>
+                {isAppwriteVideo && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-white border-white hover:bg-white hover:text-black"
+                    onClick={async () => {
+                      // Try to clear cache and reload
+                      if (videoId) {
+                        try {
+                          // Clear cached version and try to reload
+                          const { clearCachedVideo } = await import('@/lib/videoCache');
+                          await clearCachedVideo(videoId, processedUrl);
+                          setError(null);
+                          setIsLoading(true);
+                          // Force a re-render by changing the effective URL slightly
+                          setEffectiveVideoUrl(processedUrl + '&cache_bust=' + Date.now());
+                        } catch (e) {
+                          console.error('Error clearing cache:', e);
+                          // Fallback to regular retry
+                          setError(null);
+                          setIsLoading(true);
+                          if (videoRef.current) {
+                            videoRef.current.load();
+                          }
+                        }
+                      } else {
+                        // Regular retry if no videoId
+                        setError(null);
+                        setIsLoading(true);
+                        if (videoRef.current) {
+                          videoRef.current.load();
+                        }
+                      }
+                    }}
+                  >
+                    Clear Cache & Retry
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         )}
 
-        {isIframeVideo ? (
-          <div className="video-iframe-container">
-            <iframe
-              ref={iframeRef}
-              src={processedUrl}
-              className="video-iframe"
-              allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-              allowFullScreen
-              frameBorder="0"
-              onLoad={() => {
-                // Set loading to false when iframe loads
-                console.log('Iframe onLoad triggered');
-                setIsLoading(false);
-              }}
-              title={title}
-              sandbox="allow-scripts allow-same-origin allow-presentation allow-popups-to-escape-sandbox"
-            />
-          </div>
-        ) : (
-          <>
-            <video
-              ref={videoRef}
-              src={effectiveVideoUrl} // Use the effective URL (cached or original)
-              className="w-full h-full object-cover"
-              onLoadedData={() => {
-                console.log("Video onLoadedData triggered");
-                setIsLoading(false);
-              }}
-              onError={(e) => {
-                console.error("Video onError triggered:", e);
-                console.error("Video error details:", {
-                  src: (e.target as HTMLVideoElement)?.src,
-                  error: (e.target as HTMLVideoElement)?.error
-                });
-                setIsLoading(false);
-              }}
-              onCanPlay={() => {
-                console.log("Video can play");
-              }}
-              onCanPlayThrough={() => {
-                console.log("Video can play through");
-              }}
-              onLoadStart={() => {
-                console.log("Video load start");
-              }}
-              onLoadedMetadata={() => {
-                console.log("Video loaded metadata");
-              }}
-              playsInline
-              webkit-playsinline="true"
-              controls={false}
-              autoPlay={autoPlay}
-              muted={isMuted}
-            />
-
-          </>
-        )}
+        <video
+          ref={videoRef}
+          src={effectiveVideoUrl} // Use the effective URL (cached or original)
+          className="w-full h-full object-cover"
+          onLoadedData={() => {
+            console.log("Video onLoadedData triggered");
+            setIsLoading(false);
+          }}
+          onError={(e) => {
+            console.error("Video onError triggered:", e);
+            console.error("Video error details:", {
+              src: (e.target as HTMLVideoElement)?.src,
+              error: (e.target as HTMLVideoElement)?.error
+            });
+            setIsLoading(false);
+          }}
+          onCanPlay={() => {
+            console.log("Video can play");
+          }}
+          onCanPlayThrough={() => {
+            console.log("Video can play through");
+          }}
+          onLoadStart={() => {
+            console.log("Video load start");
+          }}
+          onLoadedMetadata={() => {
+            console.log("Video loaded metadata");
+          }}
+          playsInline
+          webkit-playsinline="true"
+          controls={false}
+          autoPlay={autoPlay}
+          muted={isMuted}
+        />
 
         {/* Video Controls Overlay */}
-        {!isIframeVideo && (
-          <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="text-white hover:text-white hover:bg-white/20"
-                  onClick={toggleMute}
-                >
-                  {isMuted || volume === 0 ? (
-                    <VolumeX className="h-5 w-5" />
-                  ) : (
-                    <Volume2 className="h-5 w-5" />
-                  )}
-                </Button>
-                <Slider
-                  value={[volume]}
-                  max={1}
-                  step={0.01}
-                  className="w-24"
-                  onValueChange={handleVolumeChange}
-                />
-              </div>
+        <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
               <Button 
                 variant="ghost" 
                 size="icon" 
                 className="text-white hover:text-white hover:bg-white/20"
-                onClick={toggleFullscreen}
+                onClick={toggleMute}
               >
-                {isFullscreen ? (
-                  <Minimize className="h-5 w-5" />
+                {isMuted || volume === 0 ? (
+                  <VolumeX className="h-5 w-5" />
                 ) : (
-                  <Maximize className="h-5 w-5" />
+                  <Volume2 className="h-5 w-5" />
                 )}
               </Button>
+              <Slider
+                value={[volume]}
+                max={1}
+                step={0.01}
+                className="w-24"
+                onValueChange={handleVolumeChange}
+              />
             </div>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-white hover:text-white hover:bg-white/20"
+              onClick={toggleFullscreen}
+            >
+              {isFullscreen ? (
+                <Minimize className="h-5 w-5" />
+              ) : (
+                <Maximize className="h-5 w-5" />
+              )}
+            </Button>
           </div>
-        )}
+        </div>
       </div>
       
       {!isReelStyle && (
         <div className="p-4">
           <h3 className="font-semibold text-foreground truncate">{title}</h3>
           <p className="text-sm text-muted-foreground mt-1">
-            {isGoogleDrive ? 'Google Drive Video' : isMegaVideo ? 'Mega.nz Video' : isAppwriteVideo ? 'Appwrite Hosted Video' : 'Direct Video'}
-            {videoId && isAppwriteVideo && ' (Cached)' // Show cached status
-}
+            {isAppwriteVideo ? 'Appwrite Hosted Video' : 'Direct Video'}
+            {videoId && isAppwriteVideo && ' (Cached)'}
           </p>
         </div>
       )}

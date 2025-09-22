@@ -1,3 +1,20 @@
+/**
+ * Appwrite Integration Layer
+ * 
+ * Developed by Fahad Akash
+ * Game Developer | Cloud Engineer | Full Stack Developer
+ * 
+ * This module provides the core integration with Appwrite services,
+ * including multi-tier storage fallback, database operations, and
+ * video management functionality.
+ * 
+ * Features:
+ * - 6-tier storage fallback system for unlimited capacity
+ * - Database operations for QR code management
+ * - Video upload/download with progress tracking
+ * - Automatic storage server selection based on availability
+ */
+
 import { Client, Storage, Databases, ID, Permission, Role, Query } from 'appwrite';
 import { QRCodeData } from './qrGenerator';
 import { uploadVideoToFallback, deleteVideoFromFallback } from './appwriteFallback';

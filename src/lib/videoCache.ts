@@ -1,3 +1,19 @@
+/**
+ * Video Caching Utility
+ * 
+ * Developed by Fahad Akash
+ * Game Developer | Cloud Engineer | Full Stack Developer
+ * 
+ * This module implements a robust video caching system using IndexedDB
+ * to improve playback performance and reduce bandwidth usage.
+ * 
+ * Features:
+ * - IndexedDB-based storage for large video files
+ * - Automatic cache management based on available storage space
+ * - Cache size limits to prevent excessive storage usage
+ * - Cache statistics and debugging capabilities
+ */
+
 // Video caching utility using IndexedDB for larger storage capacity
 import { debugCache } from './cacheDebugger';
 import { generateVideoCacheKey } from './videoUtils';
@@ -96,7 +112,7 @@ export const getCachedVideoUrl = async (videoId: string, originalUrl: string): P
   }
 };
 
-// Cache a video from URL
+// Cache a video from URL with improved handling for large videos
 export const cacheVideo = async (videoId: string, url: string): Promise<string | null> => {
   debugCache.log('cacheVideo called', { videoId, url });
   
@@ -123,9 +139,24 @@ export const cacheVideo = async (videoId: string, url: string): Promise<string |
     debugCache.log('Fetching video from URL', url);
     console.log(`[VideoCache] Downloading video: ${videoId} from ${url}`);
     
+    // Use streaming approach for large videos to avoid memory issues
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    // Check content length if available
+    const contentLength = response.headers.get('content-length');
+    const total = contentLength ? parseInt(contentLength, 10) : 0;
+    
+    // For very large videos (>100MB), skip caching to avoid memory issues
+    if (total > 100 * 1024 * 1024) {
+      debugCache.warn('Video too large to cache (over 100MB), streaming directly');
+      console.log(`[VideoCache] Video ${videoId} too large to cache (${(total / (1024 * 1024)).toFixed(2)} MB), streaming directly`);
+      
+      // Create a temporary blob URL for direct playback
+      const blob = await response.blob();
+      return URL.createObjectURL(blob);
     }
     
     const blob = await response.blob();

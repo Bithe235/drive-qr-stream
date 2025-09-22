@@ -1,5 +1,18 @@
 # Welcome to your Lovable project
 
+## Project Overview
+
+This is a QR code video streaming application that allows users to upload videos, generate QR codes for access, and play videos in a reels-style interface. The application features multi-tier storage fallback, video caching, and optimized video playback.
+
+## Developer Information
+
+**Fahad Akash**
+- Game Developer
+- Cloud Engineer
+- Full Stack Developer
+
+A professional developer with expertise in game development, cloud infrastructure, and full-stack web applications. Specializes in creating scalable, high-performance applications with robust architecture and optimized user experiences.
+
 ## Project info
 
 **URL**: https://lovable.dev/projects/c7614956-e28f-492c-ae78-7b370ae07254
@@ -59,6 +72,28 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
+- Appwrite (Backend as a Service)
+- QR Code generation
+- IndexedDB for video caching
+
+## Key Features
+
+1. **Multi-tier Storage Fallback**: Videos are stored across multiple Appwrite projects to provide unlimited storage capacity.
+2. **Video Caching**: Implements IndexedDB caching for improved playback performance.
+3. **QR Code Generation**: Automatically generates scannable QR codes for video access.
+4. **Reels-style Interface**: Mobile-optimized video player with automatic playback progression.
+5. **Admin Panel**: Secure interface for uploading and managing videos.
+6. **Responsive Design**: Works seamlessly across desktop and mobile devices.
+
+## Architecture Overview
+
+The application follows a modern React architecture with TypeScript for type safety. Key components include:
+
+- **Frontend**: React with Vite, Tailwind CSS, and shadcn-ui components
+- **Backend**: Appwrite for database, authentication, and file storage
+- **Storage**: Multi-tier Appwrite storage system with automatic fallback
+- **Caching**: IndexedDB implementation for efficient video caching
+- **Deployment**: Vercel hosting with optimized configuration
 
 ## How can I deploy this project?
 
