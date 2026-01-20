@@ -59,7 +59,7 @@ const Index = () => {
             onClick={handleSwitchToUser}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
           >
-            Switch to User View v1
+            Switch to User View v2
           </button>
         </div>
         <AdminPanel onLogout={handleLogout} />
