@@ -86,16 +86,18 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-center space-y-4">
-                <div className="p-6 bg-card rounded-2xl border border-border/30">
+                <div className="p-6 bg-gradient-to-br from-muted/30 to-accent/20 rounded-2xl border border-border/30 flex items-center justify-center">
                   {/* Use the static QR code image from public/qrfile folder */}
-                  <img 
-                    src="/qrfile/frame.png" 
-                    alt="All Videos QR Code"
-                    className="h-32 w-32 mx-auto mb-4 rounded-lg"
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Scan to access all video content
-                  </p>
+                  <div className="flex flex-col items-center">
+                    <img 
+                      src={`/qrfile/frame.jpg`} 
+                      alt="All Videos QR Code"
+                      className="w-64 h-64 object-contain mx-auto mb-3 rounded-lg"
+                    />
+                    <p className="text-sm text-muted-foreground text-center">
+                      Scan to access all video content
+                    </p>
+                  </div>
                 </div>
                 <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
                   <Video className="h-3 w-3" />
@@ -163,11 +165,11 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
               <CardContent className="text-center space-y-4">
                 {currentVideo ? (
                   <>
-                    <div className="p-4 bg-gradient-to-br from-muted/30 to-accent/20 rounded-2xl border border-border/30">
+                    <div className="p-4 bg-gradient-to-br from-muted/30 to-accent/20 rounded-2xl border border-border/30 flex items-center justify-center">
                       <img 
                         src={currentVideo.qrCodeDataUrl} 
                         alt={`QR Code for ${currentVideo.title}`}
-                        className="w-32 h-32 mx-auto rounded-xl border border-border/50"
+                        className="w-64 h-64 object-contain rounded-xl border border-border/50"
                       />
                     </div>
                     <div>
