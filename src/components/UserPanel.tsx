@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { VideoPlayer } from './VideoPlayer';
+import { VideoPlayer, transformAppwriteUrlForPlayback } from './VideoPlayer';
 import { getStoredQRCodes, downloadQRCode, QRCodeData } from '@/lib/qrGenerator';
 import { QrCode, Download, Play, Video } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { CacheTest } from './CacheTest';
+import { cacheVideo, isVideoCached } from '@/lib/videoCache';
 
 interface UserPanelProps {
   onBackToLogin: () => void;
@@ -15,12 +16,39 @@ interface UserPanelProps {
 export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
   const [qrCodes, setQrCodes] = useState<QRCodeData[]>([]);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const [replayCount, setReplayCount] = useState(0);
   // Removed allReelsQR state since we're using a static image
 
   useEffect(() => {
     loadQRCodes();
     // Removed generateAllReelsQR call since we're using a static image
   }, []);
+
+  // Background caching of all videos
+  useEffect(() => {
+    if (qrCodes.length === 0) return;
+
+    const cacheAllVideos = async () => {
+      console.log('Starting background caching of all videos...');
+      for (const video of qrCodes) {
+        const isAppwriteVideo = video.url.includes('appwrite.io/v1/storage');
+        const processedUrl = isAppwriteVideo
+          ? transformAppwriteUrlForPlayback(video.url)
+          : video.url;
+        
+        // check if already cached to avoid redundant calls
+        const cached = await isVideoCached(video.id, processedUrl);
+        if (!cached) {
+            console.log(`Queueing background download for: ${video.title}`);
+            cacheVideo(video.id, processedUrl).catch(err => 
+                console.error(`Failed to cache video ${video.title}:`, err)
+            );
+        }
+      }
+    };
+
+    cacheAllVideos();
+  }, [qrCodes]);
 
   const loadQRCodes = async () => {
     try {
@@ -33,9 +61,36 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
 
   // Removed generateAllReelsQR function since we're using a static image
 
-  const handleVideoEnd = () => {
-    if (qrCodes.length > 1) {
-      setCurrentVideoIndex((prev) => (prev + 1) % qrCodes.length);
+  const handleVideoEnd = async () => {
+    if (qrCodes.length === 0) return;
+    
+    if (qrCodes.length === 1) {
+       setReplayCount(prev => prev + 1);
+       return;
+    }
+
+    const nextIndex = (currentVideoIndex + 1) % qrCodes.length;
+    const nextVideo = qrCodes[nextIndex];
+    
+    // Check if next video is ready
+    const isAppwriteVideo = nextVideo.url.includes('appwrite.io/v1/storage');
+    const processedUrl = isAppwriteVideo
+          ? transformAppwriteUrlForPlayback(nextVideo.url)
+          : nextVideo.url;
+
+    const isReady = await isVideoCached(nextVideo.id, processedUrl);
+
+    if (isReady) {
+      console.log(`Next video (${nextVideo.title}) is ready/cached. Playing next.`);
+      setCurrentVideoIndex(nextIndex);
+      setReplayCount(0);
+    } else {
+      console.log(`Next video (${nextVideo.title}) is NOT ready. Replaying current.`);
+      // Trigger replay of current video
+      setReplayCount(prev => prev + 1);
+      
+      // Prioritize downloading the next video immediately
+      cacheVideo(nextVideo.id, processedUrl).catch(console.error);
     }
   };
 
@@ -117,11 +172,12 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
                 <div className="flex justify-center">
                   <div className="w-full max-w-md">
                     <VideoPlayer
+                      key={`${currentVideo.id}-${replayCount}`}
                       videoUrl={currentVideo.url}
                       title={currentVideo.title}
                       onVideoEnd={handleVideoEnd}
                       isReelStyle={true}
-                      videoId={currentVideo.id} // Pass video ID for caching
+                      videoId={currentVideo.id}
                     />
                   </div>
                 </div>

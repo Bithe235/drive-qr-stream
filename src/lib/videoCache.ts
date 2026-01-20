@@ -37,7 +37,7 @@ const initDB = (): Promise<IDBDatabase> => {
   debugCache.log('Initializing IndexedDB');
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-    
+
     request.onerror = () => {
       debugCache.error('Failed to open IndexedDB', request.error);
       reject(request.error);
@@ -46,7 +46,7 @@ const initDB = (): Promise<IDBDatabase> => {
       debugCache.log('IndexedDB opened successfully');
       resolve(request.result);
     };
-    
+
     request.onupgradeneeded = (event) => {
       debugCache.log('Creating IndexedDB structure');
       const db = (event.target as IDBOpenDBRequest).result;
@@ -70,18 +70,18 @@ export const getCachedVideoUrl = async (videoId: string, originalUrl: string): P
   // Generate a consistent cache key
   const cacheKey = generateVideoCacheKey(videoId, originalUrl);
   debugCache.log('getCachedVideoUrl called', { videoId, originalUrl, cacheKey });
-  
+
   if (!isIndexedDBAvailable()) {
     debugCache.warn('IndexedDB not available, caching disabled');
     return null;
   }
-  
+
   try {
     const db = await initDB();
     const transaction = db.transaction(STORE_NAME, 'readonly');
     const store = transaction.objectStore(STORE_NAME);
     const request = store.get(cacheKey);
-    
+
     return new Promise((resolve, reject) => {
       request.onsuccess = () => {
         if (request.result) {
@@ -100,7 +100,7 @@ export const getCachedVideoUrl = async (videoId: string, originalUrl: string): P
           cacheVideo(cacheKey, originalUrl).then(resolve).catch(reject);
         }
       };
-      
+
       request.onerror = () => {
         debugCache.error('Error reading from cache', request.error);
         reject(request.error);
@@ -112,19 +112,48 @@ export const getCachedVideoUrl = async (videoId: string, originalUrl: string): P
   }
 };
 
+// Check if a video is cached without downloading it
+export const isVideoCached = async (videoId: string, originalUrl: string): Promise<boolean> => {
+  const cacheKey = generateVideoCacheKey(videoId, originalUrl);
+
+  if (!isIndexedDBAvailable()) {
+    return false;
+  }
+
+  try {
+    const db = await initDB();
+    const transaction = db.transaction(STORE_NAME, 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.get(cacheKey);
+
+    return new Promise((resolve) => {
+      request.onsuccess = () => {
+        resolve(!!request.result);
+      };
+
+      request.onerror = () => {
+        resolve(false);
+      };
+    });
+  } catch (e) {
+    debugCache.error('Error checking cache status', e);
+    return false;
+  }
+};
+
 // Cache a video from URL with improved handling for large videos
 export const cacheVideo = async (videoId: string, url: string): Promise<string | null> => {
   debugCache.log('cacheVideo called', { videoId, url });
-  
+
   if (!isIndexedDBAvailable()) {
     debugCache.warn('IndexedDB not available, returning direct URL');
     return null;
   }
-  
+
   try {
     // Check available storage space
     const quota = await debugCache.getStorageInfo();
-    
+
     if (quota && quota.quota && quota.usage) {
       const availableSpace = quota.quota - quota.usage;
       debugCache.log('Available storage space', availableSpace);
@@ -135,48 +164,48 @@ export const cacheVideo = async (videoId: string, url: string): Promise<string |
         return null;
       }
     }
-    
+
     debugCache.log('Fetching video from URL', url);
     console.log(`[VideoCache] Downloading video: ${videoId} from ${url}`);
-    
+
     // Use streaming approach for large videos to avoid memory issues
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
-    
+
     // Check content length if available
     const contentLength = response.headers.get('content-length');
     const total = contentLength ? parseInt(contentLength, 10) : 0;
-    
+
     // For very large videos (>100MB), skip caching to avoid memory issues
     if (total > 100 * 1024 * 1024) {
       debugCache.warn('Video too large to cache (over 100MB), streaming directly');
       console.log(`[VideoCache] Video ${videoId} too large to cache (${(total / (1024 * 1024)).toFixed(2)} MB), streaming directly`);
-      
+
       // Create a temporary blob URL for direct playback
       const blob = await response.blob();
       return URL.createObjectURL(blob);
     }
-    
+
     const blob = await response.blob();
     debugCache.log('Video fetched', { size: blob.size, type: blob.type });
     console.log(`[VideoCache] Video ${videoId} downloaded (${(blob.size / (1024 * 1024)).toFixed(2)} MB)`);
-    
+
     // Check if it's too large to cache (more than 500MB)
     if (blob.size > 500 * 1024 * 1024) {
       debugCache.warn('Video too large to cache (over 500MB)');
       console.log(`[VideoCache] Video ${videoId} too large to cache (${(blob.size / (1024 * 1024)).toFixed(2)} MB)`);
       return URL.createObjectURL(blob);
     }
-    
+
     // Save to IndexedDB
     debugCache.log('Saving video to cache');
     console.log(`[VideoCache] Caching video ${videoId}`);
     const db = await initDB();
     const transaction = db.transaction(STORE_NAME, 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
-    
+
     const cacheEntry: VideoCacheEntry = {
       id: videoId,
       title: `Cached Video ${videoId}`,
@@ -185,9 +214,9 @@ export const cacheVideo = async (videoId: string, url: string): Promise<string |
       cachedAt: Date.now(),
       size: blob.size
     };
-    
+
     const request = store.put(cacheEntry);
-    
+
     return new Promise((resolve, reject) => {
       request.onsuccess = () => {
         debugCache.log(`Video ${videoId} cached successfully`);
@@ -195,7 +224,7 @@ export const cacheVideo = async (videoId: string, url: string): Promise<string |
         // Return blob URL
         resolve(URL.createObjectURL(blob));
       };
-      
+
       request.onerror = () => {
         debugCache.error('Error caching video', request.error);
         console.error(`[VideoCache] Error caching video ${videoId}:`, request.error);
@@ -215,15 +244,15 @@ export const clearCachedVideo = async (videoId: string, originalUrl: string): Pr
   // Generate a consistent cache key
   const cacheKey = generateVideoCacheKey(videoId, originalUrl);
   debugCache.log('clearCachedVideo called', { videoId, cacheKey });
-  
+
   if (!isIndexedDBAvailable()) return;
-  
+
   try {
     const db = await initDB();
     const transaction = db.transaction(STORE_NAME, 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
     store.delete(cacheKey);
-    
+
     return new Promise((resolve, reject) => {
       transaction.oncomplete = () => {
         debugCache.log(`Video ${cacheKey} cleared from cache`);
@@ -239,15 +268,15 @@ export const clearCachedVideo = async (videoId: string, originalUrl: string): Pr
 // Clear all cached videos
 export const clearAllCachedVideos = async (): Promise<void> => {
   debugCache.log('clearAllCachedVideos called');
-  
+
   if (!isIndexedDBAvailable()) return;
-  
+
   try {
     const db = await initDB();
     const transaction = db.transaction(STORE_NAME, 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
     store.clear();
-    
+
     return new Promise((resolve, reject) => {
       transaction.oncomplete = () => {
         debugCache.log('All videos cleared from cache');
@@ -263,34 +292,34 @@ export const clearAllCachedVideos = async (): Promise<void> => {
 // Get cache statistics
 export const getCacheStats = async (): Promise<{ count: number; totalSize: number; oldest: number | null }> => {
   debugCache.log('getCacheStats called');
-  
+
   if (!isIndexedDBAvailable()) return { count: 0, totalSize: 0, oldest: null };
-  
+
   try {
     const db = await initDB();
     const transaction = db.transaction(STORE_NAME, 'readonly');
     const store = transaction.objectStore(STORE_NAME);
-    
+
     return new Promise((resolve, reject) => {
       const request = store.getAll();
-      
+
       request.onsuccess = () => {
         const videos = request.result;
         const count = videos.length;
         let totalSize = 0;
         let oldest: number | null = null;
-        
+
         videos.forEach((video: VideoCacheEntry) => {
           totalSize += video.size;
           if (oldest === null || video.cachedAt < oldest) {
             oldest = video.cachedAt;
           }
         });
-        
+
         debugCache.log('Cache stats', { count, totalSize, oldest });
         resolve({ count, totalSize, oldest });
       };
-      
+
       request.onerror = () => {
         debugCache.error('Error getting cache stats', request.error);
         reject(request.error);
