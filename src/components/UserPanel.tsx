@@ -90,7 +90,7 @@ export const UserPanel = ({ onBackToLogin }: UserPanelProps) => {
                   {/* Use the static QR code image from public/qrfile folder */}
                   <div className="flex flex-col items-center">
                     <img 
-                      src={`public/qrfile/frame.jpg`} 
+                      src={`/qrfile/frame.jpg`} 
                       alt="All Videos QR Code"
                       className="w-64 h-64 object-contain mx-auto mb-3 rounded-lg"
                     />
